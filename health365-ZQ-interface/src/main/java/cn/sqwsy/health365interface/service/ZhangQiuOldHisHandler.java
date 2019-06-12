@@ -15,6 +15,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,18 +23,33 @@ import org.springframework.stereotype.Component;
 
 import cn.sqwsy.health365interface.dao.entity.DepartAndChron;
 import cn.sqwsy.health365interface.dao.entity.Department;
+import cn.sqwsy.health365interface.dao.entity.DepartmentMidrUserInfo;
 import cn.sqwsy.health365interface.dao.entity.Diseaselibrary;
+import cn.sqwsy.health365interface.dao.entity.Followup;
+import cn.sqwsy.health365interface.dao.entity.HisError;
+import cn.sqwsy.health365interface.dao.entity.Outofthehospitalinhospitalinformation;
+import cn.sqwsy.health365interface.dao.entity.Patient;
 import cn.sqwsy.health365interface.dao.entity.RzzyyJbgl;
+import cn.sqwsy.health365interface.dao.entity.UserInfo;
 import cn.sqwsy.health365interface.dao.mapper.DepartAndChronOldMapper;
 import cn.sqwsy.health365interface.dao.mapper.DepartMentOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.DepartmentMidrUserInfoOldMapper;
 import cn.sqwsy.health365interface.dao.mapper.DiseaselibraryOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.FollowupOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.HisErrorOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.OutOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.PatientOldMapper;
 import cn.sqwsy.health365interface.dao.mapper.RzzyyJbglOldMapper;
+import cn.sqwsy.health365interface.dao.mapper.UserInfoOldMapper;
 import cn.sqwsy.health365interface.service.utils.CardNumUtil;
 import cn.sqwsy.health365interface.service.utils.DateUtil;
+import cn.sqwsy.health365interface.service.utils.HashUtil;
 import cn.sqwsy.health365interface.service.utils.ValidateUtil;
 
 @Component
 public class ZhangQiuOldHisHandler {
+	private static final int AGE = 9;
+	
 	@Autowired
 	private RzzyyJbglOldMapper rzzyyJbglMapper;
 
@@ -42,9 +58,27 @@ public class ZhangQiuOldHisHandler {
 
 	@Autowired
 	private DepartMentOldMapper departMentOldMapper;
+	
+	@Autowired
+	private DepartmentMidrUserInfoOldMapper departmentMidrUserInfoOldMapper;
 
 	@Autowired
 	private DepartAndChronOldMapper departAndChronOldMapper;
+	
+	@Autowired
+	private HisErrorOldMapper hisErrorOldMapper;
+	
+	@Autowired
+	private UserInfoOldMapper userInfoOldMapper;
+	
+	@Autowired
+	private PatientOldMapper patientOldMapper;
+	
+	@Autowired
+	private OutOldMapper outofthehospitalinhospitalinformationOldMapper;
+	
+	@Autowired
+	private FollowupOldMapper followupOldMapper;
 
 	@Scheduled(fixedDelay = 600000)
 	public void fixedRateJob() {
@@ -516,7 +550,18 @@ public class ZhangQiuOldHisHandler {
 						String street = rst.getString("BIRTH_PLACE_STREET");
 						String currentaddress = rst.getString("MAILING_ADDRESS");
 						StringBuffer currentaddressbf = new StringBuffer();
-						currentaddressbf.append(province).append(city).append(area).append(street);
+						if(ValidateUtil.isNotNull(province)){
+							currentaddressbf.append(province);
+						}
+						if(ValidateUtil.isNotNull(city)){
+							currentaddressbf.append(city);
+						}
+						if(ValidateUtil.isNotNull(area)){
+							currentaddressbf.append(area);
+						}
+						if(ValidateUtil.isNotNull(street)){
+							currentaddressbf.append(street);
+						}
 						if (ValidateUtil.isNotNull(currentaddress)) {
 							currentaddressbf.append("(").append(currentaddress).append(")");
 						}
@@ -568,6 +613,35 @@ public class ZhangQiuOldHisHandler {
 					}
 
 				}
+				/***
+				 * 大表分小表start
+				 */
+				Map<String,Object> map = new HashMap<>();
+				map.put("isStatus", 2);
+				map.put("ispigeonhole", 1);
+				List<RzzyyJbgl> rzList = rzzyyJbglMapper.getRzzyyJbglList(map);
+				for(RzzyyJbgl rj:rzList){
+					StringBuffer ap = new StringBuffer();
+					if(getErrorMessage(rj,ap)){
+						setErrorMessage(rj, ap);
+						rj.setIspigeonhole(2);
+						rzzyyJbglMapper.setRzzyyJbgl(rj);
+						continue;
+					}
+					setErrorMessageStatus(rj);
+					//将数据插入科室表
+					setDepartment(rj);
+					//将数据插入用户表
+					setUserInfo(rj);
+					Patient p = setPatient(rj);
+					Department department = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
+					if(!ValidateUtil.isEquals("需要", department.getNeedfollowup())){
+						continue;
+					}
+					setOutHospital(rj, department, p);
+					rj.setIspigeonhole(2);
+					rzzyyJbglMapper.updateRzzyyJbgl(rj);
+				}
 			}
 			pstmt.close();
 			conn.close();
@@ -595,6 +669,120 @@ public class ZhangQiuOldHisHandler {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	/**
+	 * 修改错误提示状态
+	 * @author WangSongYuan
+	 * @param rj
+	 */
+	private void setErrorMessageStatus(RzzyyJbgl rj){
+		Map<String,Object> para= new HashMap<>();
+		para.put("patientid_his", rj.getPatientid_his());
+		para.put("inhospitalcount",rj.getInhospitalcount());
+		HisError hisError = hisErrorOldMapper.getHisError(para);
+		if(hisError != null){
+			hisError.setStatus(1);
+			hisError.setIsmakeup(1);
+			hisError.setUpdatetime(new Timestamp(System.currentTimeMillis()));
+			hisError.setPatientid_his(rj.getPatientid_his());
+			hisError.setInhospitalcount(rj.getInhospitalcount());
+			hisErrorOldMapper.updateHisError(hisError);
+		}
+	}
+	
+	/**
+	 * 添加错误信息
+	 * @author WangSongYuan
+	 * @param rj
+	 * @param ap
+	 */
+	private void setErrorMessage(RzzyyJbgl rj,StringBuffer ap){
+		HisError hiserr = new HisError();
+		Map<String,Object> para= new HashMap<>();
+		para.put("patientid_his", rj.getPatientid_his());
+		para.put("inhospitalcount",rj.getInhospitalcount());
+		HisError hisError = hisErrorOldMapper.getHisError(para);
+		if(hisError != null){
+			hiserr = hisError;
+		}
+		hiserr.setMsg(ap.toString());
+		hiserr.setThirdpartyhisid(rj.getId());
+		hiserr.setMaindoctorid(rj.getMaindoctorid());
+		hiserr.setJobnum(rj.getJobnum());
+		hiserr.setPatientid_his(rj.getPatientid_his());
+		hiserr.setInhospitalcount(rj.getInhospitalcount());
+		hiserr.setStatus(0);
+		if(hisError != null){
+			hiserr.setUpdatetime(new Timestamp(System.currentTimeMillis()));
+			hisErrorOldMapper.updateHisError(hiserr);
+		}else{
+			hisErrorOldMapper.setHisError(hiserr);
+		}
+	}
+	
+	/**
+	 * 获取出错信息
+	 * @author WangSongYuan
+	 * @param rj
+	 * @param ap
+	 * @return
+	 */
+	private boolean getErrorMessage(RzzyyJbgl rj,StringBuffer ap){
+		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式  注意身份证信息为空
+		ap.append( "当前时间："+df.format(new Date())+"您有新的消息:</br>科室:"+rj.getInhospitaldepartment()+",主治医师:"+rj.getMaindoctorname()+",患者姓名:"+rj.getName()+"</br>住院号:"+rj.getInhospitalid()+",住院次数:"+rj.getInhospitalcount()+"</br>错误信息如下:</br>");
+		if(ValidateUtil.isNull(rj.getJobnum())){
+			ap.append("</br>工号为空</br>");
+			return true;
+		}
+		//新增未分配管床医生
+		if(ValidateUtil.isNull(rj.getMaindoctorid())){
+			ap.append("</br>未分配管床医生</br>");
+			return true;
+		}
+		//如果不是小孩，且身份证号为空
+		if(ValidateUtil.isNull(rj.getCardnum()) && ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE){
+			ap.append("</br>身份证号为空</br>");
+			return true;
+		}else{
+			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isLength(rj.getCardnum())){
+				ap.append("</br>身份证号长度不为18位</br>");
+				return true;
+			}
+			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isCard17(rj.getCardnum())){
+				ap.append("</br>身份证号前17位不为纯数字</br>");
+				return true;
+			}
+			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isCheckCode(rj.getCardnum())){
+				ap.append("</br>身份证号校验码错误</br>");
+				return true;
+			}
+		}
+		//手机号空
+		if(ValidateUtil.isNull(rj.getPatientphone()) && ValidateUtil.isNull(rj.getRelationphone())){
+			ap.append("</br>手机号为空</br>");
+			return true;
+		}else{
+			//手机号错误
+			if(!isNum(rj.getPatientphone()) && !isNum(rj.getRelationphone())){
+				ap.append("</br>手机号填写错误</br>");
+				return true;
+			}
+		}
+		//传入的HIS科室ID为空
+		if(ValidateUtil.isNull(rj.getInhospitaldepartmentid())){
+			ap.append("</br>HIS传入的科室ID为空</br>");
+			return true;
+		}	
+		return false;
+	}
+	
+	private static boolean isNum(String str) {
+		if(str==null||str.equals("")){
+			return false;
+		}
+	    Pattern pattern = Pattern.compile("^[-\\+]?[\\d]*$");  
+	    return pattern.matcher(str).matches();  
 	}
 
 	/**
@@ -900,5 +1088,294 @@ public class ZhangQiuOldHisHandler {
 			e.printStackTrace();
 		}
 		return conn;
+	}
+	
+	/**
+	 * 将数据插入科室表
+	 * @author WangSongYuan
+	 * @param rj
+	 */
+	private void setDepartment(RzzyyJbgl rj){
+			//院后
+			Department dt = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
+			if(dt==null){
+				Department d = new Department();//科室
+				if(ValidateUtil.isNotNull(rj.getOuthospitaldepartmentid())){
+					d.setThirdpartyhisid(rj.getOuthospitaldepartmentid());
+				}
+				d.setName(rj.getOuthospitaldepartment());//科室名称
+				//wangsongyuan 新增科室排期随访 默认值 20170719
+				d.setNeedfollowup("需要");
+				//wangsongyuan 新增科室类别 20180608
+				d.setStatus(1);
+				departMentOldMapper.setDepartment(d);
+				//往中间表里添加数据
+			}else{
+				dt.setName(rj.getOuthospitaldepartment());//科室名称
+				dt.setStatus(1);//科室类别
+				departMentOldMapper.updateDepartment(dt);
+			}
+	}
+	
+	/**
+	 * 将数据插入用户表
+	 * @author WangSongYuan
+	 * @param rj
+	 */
+	public void setUserInfo(RzzyyJbgl rj){
+		Map<String, Object> para = new HashMap<>();
+		para.put("thirdpartyhisid", rj.getMaindoctorid());
+		UserInfo ui = userInfoOldMapper.getUserInfo(para);
+		if(ui==null){
+			UserInfo uif = new UserInfo();
+			if(ValidateUtil.isNotNull(rj.getMaindoctorid())){
+				uif.setThirdpartyhisid(rj.getMaindoctorid());
+			}
+			uif.setName(rj.getMaindoctorname());
+			if(ValidateUtil.isNotNull(rj.getMaindoctorid())){//当主管医师的id不为空的时候，讲roleid设置成3位专科医生
+				uif.setRoleid(3);
+				uif.setJobnum(rj.getJobnum());
+				uif.setPassword("123456");
+			}
+			userInfoOldMapper.setUserInfo(uif);
+			DepartmentMidrUserInfo dmrinfo = new DepartmentMidrUserInfo();
+			Department department = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
+			dmrinfo.setUserinfoid(uif.getId());
+			dmrinfo.setDepartmentid(department.getId());
+			departmentMidrUserInfoOldMapper.setDepartmentMidrUserInfo(dmrinfo);
+		}else{
+			Department department = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
+			//新科室id
+			Integer departmentId = department.getId();
+			//根据用户id获取用户和科室的中间表
+			DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(ui.getId());
+			if(dmrinfo==null){
+				DepartmentMidrUserInfo newdmrinfo = new DepartmentMidrUserInfo();
+				newdmrinfo.setUserinfoid(ui.getId());
+				newdmrinfo.setDepartmentid(department.getId());
+				departmentMidrUserInfoOldMapper.setDepartmentMidrUserInfo(newdmrinfo);
+			}else{
+				dmrinfo.setDepartmentid(departmentId);
+				departmentMidrUserInfoOldMapper.updateDepartmentMidrUserInfo(dmrinfo);
+			}
+		}
+	}
+	
+	private Patient setPatient(RzzyyJbgl rj){
+		//将数据插入患者表
+		String cardnum = rj.getCardnum();
+		//如果是儿童，并且有身份证
+		if((CardNumUtil.isValidate18Idcard(cardnum))&&(((ValidateUtil.isEquals("岁", rj.getAgeunit())) && rj.getAge()<=AGE)||(!ValidateUtil.isEquals("岁", rj.getAgeunit())))){
+			String cardnumold = "";
+			if(rj.getBirthday()==null){ 
+				cardnumold = "temp"+HashUtil.MD5Hashing(rj.getName());
+			}else{
+				cardnumold = "temp"+HashUtil.MD5Hashing(rj.getName()+DateUtil.format(rj.getBirthday(), "yyyyMMdd"));
+			}
+			Map<String,Object> para = new HashMap<>();
+			para.put("cardnum", cardnumold);
+			Patient pt = patientOldMapper.getPatient(para);
+			if(pt != null){
+				para = new HashMap<>();
+				para.put("cardnum", cardnum);
+				Patient patientupdate = patientOldMapper.getPatient(para);
+				if (patientupdate!=null) {
+					//将所有以前关联MD5的出院表的身份证号替换成新的身份证号
+					para = new HashMap<>();
+					para.put("cardnum", cardnumold);
+					List<Outofthehospitalinhospitalinformation> outofthehospitalinhospitalinformationupdateList = outofthehospitalinhospitalinformationOldMapper.getOutList(para);
+					for (Outofthehospitalinhospitalinformation outofthehospitalinhospitalinformationupdate : outofthehospitalinhospitalinformationupdateList) {
+						outofthehospitalinhospitalinformationupdate.setCardnum(cardnum);
+						//查询对应出院的随访列表集合
+						para = new HashMap<>();
+						para.put("outofthehospitalinhospitalinformationid", outofthehospitalinhospitalinformationupdate.getId());
+						para.put("datasources", "医院患者");
+						List<Followup> followupupdateList = followupOldMapper.getFollowupList(para);
+						for (Followup followupupdate : followupupdateList) {
+							//替换成新的患者ID
+							followupupdate.setPatientid(patientupdate.getId());
+							followupOldMapper.updateFollowup(followupupdate);
+						}
+						outofthehospitalinhospitalinformationOldMapper.updateOut(outofthehospitalinhospitalinformationupdate);
+					}
+					//MD5患者记录的修改号同步到新的有身份证的记录中
+					if (ValidateUtil.isNotNull(pt.getPhonethree())) {
+						if (ValidateUtil.isNull(patientupdate.getPhonethree())) {
+							patientupdate.setPhonethree(pt.getPhonethree());
+							patientOldMapper.updatePatient(patientupdate);
+						}
+					}
+				}
+			}
+		}
+		
+		//如果是新儿童,且没有身份证号
+		if((!CardNumUtil.isValidate18Idcard(cardnum)) && (((ValidateUtil.isEquals("岁", rj.getAgeunit())) && rj.getAge()<=AGE)||(!ValidateUtil.isEquals("岁", rj.getAgeunit())))){
+			if(rj.getBirthday()==null){
+				cardnum = "temp"+HashUtil.MD5Hashing(rj.getName());
+			}else{
+				cardnum = "temp"+HashUtil.MD5Hashing(rj.getName()+DateUtil.format(rj.getBirthday(), "yyyyMMdd"));
+			}
+		}
+		Patient p = new Patient();//患者实体
+		Map <String,Object> para = new HashMap<>();
+		para.put("cardnum", cardnum);
+		Patient pt = patientOldMapper.getPatient(para);
+		if(pt != null){
+			p = pt;
+		}
+		p.setCardnum(cardnum);
+		p.setAge(rj.getAge());
+		p.setNation(rj.getNation());
+		p.setName(rj.getName());
+		p.setCompanyphone(rj.getCompanyphone());
+		p.setRelationphone(rj.getRelationphone());
+		p.setBirthday(rj.getBirthday());
+		p.setSex(rj.getSex());
+		p.setMarry(rj.getMarry());
+		p.setCurrentaddress(rj.getCurrentaddress());
+		p.setCompany(rj.getCompany());
+		p.setTelname(rj.getTelname());
+		p.setRelation(rj.getRelation());
+		p.setEducation(rj.getEducation());
+		p.setAgeunit(rj.getAgeunit());
+		p.setTeladdress(rj.getTeladdress());
+		p.setProfession(rj.getProfession());
+		p.setPhoneone(rj.getPatientphone());
+		//wangsongyuan 新增章丘HIS患者ID 20180912
+		p.setPatientHisId(rj.getPatientid_his());
+		if(pt == null){
+			patientOldMapper.setPatient(p);
+		}else{//存在就更新
+			patientOldMapper.updatePatient(p);
+		}
+		return p;
+	}
+	
+	private void setOutHospital(RzzyyJbgl rj,Department department,Patient p){
+		Outofthehospitalinhospitalinformation outh = new Outofthehospitalinhospitalinformation();
+		Map<String,Object> para= new HashMap<>();
+		para.put("patientid_his", rj.getPatientid_his());
+		para.put("inhospitalcount", rj.getInhospitalcount());
+		Outofthehospitalinhospitalinformation outofthehospitalinhospitalinformation = outofthehospitalinhospitalinformationOldMapper.getOut(para);
+		if(outofthehospitalinhospitalinformation != null){
+			outh = outofthehospitalinhospitalinformation;
+		}
+		outh.setPatient(p);
+		outh.setCardnum(p.getCardnum());
+		//添加出院表中科室的id
+		outh.setDepartmentid(department.getId());
+		outh.setInhospitaldepartment(rj.getInhospitaldepartment());
+		outh.setInhospitaldepartmentid(rj.getInhospitaldepartmentid());
+		outh.setInhospitaldays(rj.getInhospitaldays());
+		outh.setInhospitaldate(rj.getInhospitaldate());
+		outh.setOuthospitaldate(rj.getOuthospitaldatehome());
+		outh.setOuthospitaldateclose(rj.getOuthospitaldateclose());
+		outh.setClosetype(rj.getClosetype());
+		outh.setTotalcost(rj.getTotalcost());
+		outh.setMaindoctorname(rj.getMaindoctorname());
+		//添加出院表中用户的id
+		para= new HashMap<>();
+		para.put("thirdpartyhisid", rj.getMaindoctorid());
+		UserInfo userinfo = userInfoOldMapper.getUserInfo(para);
+		outh.setMaindoctorid(userinfo.getId().toString());
+		outh.setDoordoctorname(rj.getDoordoctorname());
+		outh.setDoordoctorid(rj.getDoordoctorid());
+		outh.setCosttype(rj.getCosttype());
+		outh.setInhospitalid(rj.getInhospitalid());
+		outh.setInhospitalcount(rj.getInhospitalcount());
+		outh.setInhospitaltag(rj.getInhospitaltag());
+		outh.setFilenumber(rj.getFilenumber());
+		outh.setOuthospitaldiagnose(rj.getOuthospitaldiagnose());
+		
+		//拼接所有的诊断
+		String outhospitaldiagnoseall = new String();
+		if (ValidateUtil.isNotNull(rj.getOuthospitaldiagnose())) {
+			outhospitaldiagnoseall="出院诊断:"+rj.getOuthospitaldiagnose()+"--";
+		}
+		if (ValidateUtil.isNotNull(rj.getOuthospitalotherdiagnosenameone())) {
+			outhospitaldiagnoseall=outhospitaldiagnoseall+"其他诊断1:"+rj.getOuthospitalotherdiagnosenameone()+"--";
+		}
+		if (ValidateUtil.isNotNull(rj.getOuthospitalotherdiagnosenametwo())) {
+			outhospitaldiagnoseall=outhospitaldiagnoseall+"其他诊断2:"+rj.getOuthospitalotherdiagnosenametwo()+"--";
+		}
+		if (ValidateUtil.isNotNull(rj.getOuthospitalotherdiagnosenamethree())) {
+			outhospitaldiagnoseall=outhospitaldiagnoseall+"其他诊断3:"+rj.getOuthospitalotherdiagnosenamethree()+"--";
+		}
+		if (ValidateUtil.isNotNull(rj.getOuthospitalotherdiagnosenamefour())) {
+			outhospitaldiagnoseall=outhospitaldiagnoseall+"其他诊断4:"+rj.getOuthospitalotherdiagnosenamefour()+"--";
+		}
+		if (ValidateUtil.isNotNull(rj.getOuthospitalotherdiagnosenamefive())) {
+			outhospitaldiagnoseall=outhospitaldiagnoseall+"其他诊断5:"+rj.getOuthospitalotherdiagnosenamefive();
+		}
+		outh.setOuthospitaldiagnoseall(outhospitaldiagnoseall);
+		outh.setOuthospitaldiagnoseicd(rj.getOuthospitaldiagnoseicd());
+		outh.setOuthospitinfo(rj.getOuthospitinfo());
+		outh.setOuthospitrecordid(rj.getOuthospitrecordid());
+		outh.setDrugallergy(rj.getDrugallergy());
+		outh.setAllergydrug(rj.getAllergydrug());
+		outh.setBloodtype(rj.getBloodtype());
+		outh.setRh(rj.getRh());
+		outh.setOuthospitaltype(rj.getOuthospitaltype());
+		outh.setPathologydiagnosename(rj.getPathologydiagnosename());
+		outh.setPathologydiagnosecode(rj.getPathologydiagnosecode());
+		outh.setInhospitalway(rj.getInhospitalway());
+		outh.setOuthospitalchinadoctordiagnosediseasname(rj.getOuthospitalchinadoctordiagnosediseasname());
+		outh.setOuthospitalchinadoctordiagnosediseascode(rj.getOuthospitalchinadoctordiagnosediseascode());
+		outh.setOuthospitalchinadoctordiagnosecardname(rj.getOuthospitalchinadoctordiagnosecardname());
+		outh.setOuthospitalchinadoctordiagnosecardcode(rj.getOuthospitalchinadoctordiagnosecardcode());
+		outh.setMainoperationname(rj.getMainoperationname());
+		outh.setMainoperationcode(rj.getMainoperationcode());
+		outh.setOtheroperationcodeone(rj.getOtheroperationcodeone());
+		outh.setOtheroperationnameone(rj.getOtheroperationnameone());
+		outh.setOtheroperationcodetwo(rj.getOtheroperationcodetwo());
+		outh.setOtheroperationnametwo(rj.getOtheroperationnametwo());
+		outh.setOtheroperationcodethree(rj.getOtheroperationcodethree());
+		outh.setOtheroperationnamethree(rj.getOtheroperationnamethree());
+		outh.setOtheroperationcodefour(rj.getOtheroperationcodefour());
+		outh.setOtheroperationnamefour(rj.getOtheroperationnamefour());
+		outh.setOuthospitalotherdiagnosecodeone(rj.getOuthospitalotherdiagnosecodeone());
+		outh.setOuthospitalotherdiagnosenameone(rj.getOuthospitalotherdiagnosenameone());
+		outh.setOuthospitalotherdiagnosecodetwo(rj.getOuthospitalotherdiagnosecodetwo());
+		outh.setOuthospitalotherdiagnosenametwo(rj.getOuthospitalotherdiagnosenametwo());
+		outh.setOuthospitalotherdiagnosecodethree(rj.getOuthospitalotherdiagnosecodethree());
+		outh.setOuthospitalotherdiagnosenamethree(rj.getOuthospitalotherdiagnosenamethree());
+		outh.setOuthospitalotherdiagnosecodefour(rj.getOuthospitalotherdiagnosecodefour());
+		outh.setOuthospitalotherdiagnosenamefour(rj.getOuthospitalotherdiagnosenamefour());
+		outh.setOuthospitalotherdiagnosecodefive(rj.getOuthospitalotherdiagnosecodefive());
+		outh.setOuthospitalotherdiagnosenamefive(rj.getOuthospitalotherdiagnosenamefive());
+		outh.setOwncost(rj.getOwncost());
+		outh.setHealthinsurancecost(rj.getHealthinsurancecost());
+		//outh.setSchedulingstate(outh.getSchedulingstate());
+		//wangsongyuan 新增状态值  2018-5-11
+		outh.setHisrecordstate(rj.getIsStatus());
+		//wangsongyuan HIS患者ID 2018-5-11
+		outh.setPatientid_his(rj.getPatientid_his());
+		if(rj.getIsStatus()==1&&outh.getHealthrecordstate()!=2){
+			//outh.setHealthrecordstate(1);
+			outh.setHealthrecordstate(2);//章丘临时改成2
+		}
+		//wangsongyuan 科室专访状态 20181115
+		outh.setExclusiveInterview(rj.getExclusiveInterview());
+		//wangsongyuan 疾病病种 20181115
+		outh.setChronicDiseaseId(rj.getChronicDiseaseId());
+		if(outofthehospitalinhospitalinformation != null){
+			/*if(rj.getOuthospitaldateclose() != null && !rj.getOuthospitaldateclose().equals(oldOuthospitaldateclose)){
+				outh.setOuthospitaldateclose(oldOuthospitaldateclose);
+			}*/
+			outofthehospitalinhospitalinformationOldMapper.updateOut(outh);
+			if(outh.getSchedulingstate() == 2){
+				para = new HashMap<>();
+				para.put("outofthehospitalinhospitalinformationid", outh.getId());
+				para.put("datasources","医院患者");
+				List<Followup> followupList =followupOldMapper.getFollowupList(para);
+				for (Followup followup : followupList) {
+					followup.setPatientid(p.getId());
+					followupOldMapper.updateFollowup(followup);
+				}
+			}
+		}else{
+			outofthehospitalinhospitalinformationOldMapper.setOut(outh);
+		}
 	}
 }

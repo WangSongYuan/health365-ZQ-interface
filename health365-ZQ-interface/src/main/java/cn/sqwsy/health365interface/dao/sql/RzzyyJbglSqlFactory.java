@@ -20,6 +20,19 @@ public class RzzyyJbglSqlFactory {
 	        return sql.toString();
 	}
 	
+	public String getRzzyyJbglList(Map<String, Object> para){
+		 SQL sql = new SQL();
+	        sql.SELECT("*");
+	        sql.FROM("rzzyy_jbgl");
+	        if(para.get("isStatus")!=null&&!para.get("isStatus").equals("")){
+	        	sql.WHERE("isStatus='"+para.get("isStatus")+"'");
+	        }
+	        if(para.get("ispigeonhole")!=null&&!para.get("ispigeonhole").equals("")){
+	        	sql.WHERE("ispigeonhole="+para.get("ispigeonhole"));
+	        }
+	        return sql.toString();
+	}
+	
 	public String setRzzyyJbgl(RzzyyJbgl inhospital){
 		 SQL sql = new SQL();
 	        sql.INSERT_INTO("rzzyy_jbgl");
@@ -630,6 +643,7 @@ public class RzzyyJbglSqlFactory {
 		    	if(inhospital.getChronicDiseaseId()!=null){
 		    		sql.SET("chronicDiseaseId = #{chronicDiseaseId}");
 		    	}
+		    	sql.SET("ispigeonhole=#{ispigeonhole}");
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();
 	
