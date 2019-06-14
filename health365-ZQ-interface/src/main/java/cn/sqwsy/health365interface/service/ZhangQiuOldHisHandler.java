@@ -86,7 +86,7 @@ public class ZhangQiuOldHisHandler {
 		PreparedStatement pstmt = null;
 		ResultSet rst = null;
 		try {
-			for (int i = 0; i <= 3; i++) {
+			for (int i = 0; i <= 1; i++) {
 				Calendar outStartCal = Calendar.getInstance();
 				outStartCal.add(Calendar.DAY_OF_MONTH, -i);
 				outStartCal.set(Calendar.HOUR_OF_DAY, 0);
@@ -627,7 +627,7 @@ public class ZhangQiuOldHisHandler {
 					if(getErrorMessage(rj,ap)){
 						setErrorMessage(rj, ap);
 						rj.setIspigeonhole(2);
-						rzzyyJbglMapper.setRzzyyJbgl(rj);
+						rzzyyJbglMapper.updateRzzyyJbgl(rj);
 						continue;
 					}
 					setErrorMessageStatus(rj);
@@ -638,6 +638,8 @@ public class ZhangQiuOldHisHandler {
 					Patient p = setPatient(rj);
 					Department department = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
 					if(!ValidateUtil.isEquals("需要", department.getNeedfollowup())){
+						rj.setIspigeonhole(2);
+						rzzyyJbglMapper.updateRzzyyJbgl(rj);
 						continue;
 					}
 					setOutHospital(rj, department, p);
@@ -645,8 +647,6 @@ public class ZhangQiuOldHisHandler {
 					rzzyyJbglMapper.updateRzzyyJbgl(rj);
 				}
 			}
-			pstmt.close();
-			conn.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -700,26 +700,29 @@ public class ZhangQiuOldHisHandler {
 	 * @param ap
 	 */
 	private void setErrorMessage(RzzyyJbgl rj,StringBuffer ap){
-		HisError hiserr = new HisError();
-		Map<String,Object> para= new HashMap<>();
-		para.put("patientid_his", rj.getPatientid_his());
-		para.put("inhospitalcount",rj.getInhospitalcount());
-		HisError hisError = hisErrorOldMapper.getHisError(para);
-		if(hisError != null){
-			hiserr = hisError;
-		}
-		hiserr.setMsg(ap.toString());
-		hiserr.setThirdpartyhisid(rj.getId());
-		hiserr.setMaindoctorid(rj.getMaindoctorid());
-		hiserr.setJobnum(rj.getJobnum());
-		hiserr.setPatientid_his(rj.getPatientid_his());
-		hiserr.setInhospitalcount(rj.getInhospitalcount());
-		hiserr.setStatus(0);
-		if(hisError != null){
-			hiserr.setUpdatetime(new Timestamp(System.currentTimeMillis()));
-			hisErrorOldMapper.updateHisError(hiserr);
-		}else{
-			hisErrorOldMapper.setHisError(hiserr);
+		try {
+			HisError hiserr = new HisError();
+			Map<String,Object> para= new HashMap<>();
+			para.put("patientid_his", rj.getPatientid_his());
+			para.put("inhospitalcount",rj.getInhospitalcount());
+			HisError hisError = hisErrorOldMapper.getHisError(para);
+			if(hisError != null){
+				hiserr = hisError;
+			}
+			hiserr.setMsg(ap.toString());
+			hiserr.setThirdpartyhisid(rj.getId());
+			hiserr.setMaindoctorid(rj.getMaindoctorid());
+			hiserr.setJobnum(rj.getJobnum());
+			hiserr.setPatientid_his(rj.getPatientid_his());
+			hiserr.setInhospitalcount(rj.getInhospitalcount());
+			hiserr.setStatus(0);
+			if(hisError != null){
+				hisErrorOldMapper.updateHisError(hiserr);
+			}else{
+				hisErrorOldMapper.setHisError(hiserr);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
