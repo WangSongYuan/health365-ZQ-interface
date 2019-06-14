@@ -272,19 +272,21 @@ public class ZhangQiuOldHisHandler {
 						if (ValidateUtil.isNotNull(newIcd)) {
 							rj.setOuthospitaldiagnoseicd(newIcd);
 						}
-						if (dt != null) {
-							if (dt.getExclusivestatus() != null) {
-								if (dt.getExclusivestatus() == 0) {
-									// 无需专访
-									judgeICD(inhospitalcount, patientid_his, rj, newIcd);
-									rj.setExclusiveInterview(1);
-								} else if (dt.getExclusivestatus() == 1) {
-									// 部分专访
-									judgeICD(inhospitalcount, patientid_his, rj, newIcd, dt);
-								} else if (dt.getExclusivestatus() == 2) {
-									// 全部专访
-									judgeICD(inhospitalcount, patientid_his, rj, newIcd);
-									rj.setExclusiveInterview(0);
+						if(rj.getChronicDiseaseId()==null){
+							if (dt != null) {
+								if (dt.getExclusivestatus() != null) {
+									if (dt.getExclusivestatus() == 0) {
+										// 无需专访
+										judgeICD(inhospitalcount, patientid_his, rj, newIcd);
+										rj.setExclusiveInterview(1);
+									} else if (dt.getExclusivestatus() == 1) {
+										// 部分专访
+										judgeICD(inhospitalcount, patientid_his, rj, newIcd, dt);
+									} else if (dt.getExclusivestatus() == 2) {
+										// 全部专访
+										judgeICD(inhospitalcount, patientid_his, rj, newIcd);
+										rj.setExclusiveInterview(0);
+									}
 								}
 							}
 						}

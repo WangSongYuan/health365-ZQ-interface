@@ -283,7 +283,10 @@ public class OutOldSqlFactory {
 	    		sql.VALUES("chronicDiseaseId", "#{chronicDiseaseId}");
 	    	}
 	    	
-//	    	private Integer zcxzstate=1;//1：未下转2.已下转
+	    	//1：未下转2.已下转
+	    	if(out.getZcxzstate()!=null){
+	    		sql.VALUES("zcxzstate", "#{zcxzstate}");
+	    	}
 //	    	private Integer hospitaldictionaryid;//医院字典表ID 转出后才会设置
 //	    	private String hospitalcoding;//转出的医院编码
 //	    	private Timestamp referralTime;//wangsongyuan 新增下转时间 20190212

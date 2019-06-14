@@ -32,6 +32,7 @@ public class HisErrorSqlFactory {
     		sql.VALUES("status", "#{status}");
     		sql.VALUES("ismakeup", "#{ismakeup}");
     		sql.VALUES("createtime", "#{createtime}");
+    		sql.VALUES("updatetime", "#{updatetime}");
 	        sql.WHERE("id=#{id}");
 			return sql.toString();
 	}
