@@ -114,6 +114,7 @@ public class ZhangQiuOldHisHandler {
 						Map<String, Object> para = new HashMap<>();
 						para.put("patientid_his", patientid_his);
 						para.put("inhospitalcount", Integer.valueOf(inhospitalcount));
+						//System.out.println(patientid_his+"	"+inhospitalcount);
 						RzzyyJbgl rzzyyJbgl = rzzyyJbglMapper.getRzzyyJbgl(para);
 						if (rzzyyJbgl != null) {
 							rj = rzzyyJbgl;
@@ -162,8 +163,50 @@ public class ZhangQiuOldHisHandler {
 						// String outhospitinfo =
 						// rst.getString("outhospitinfo");
 						// 离院方式
-						String outhospitaltype = rst.getString("lyfs");
-						rj.setOuthospitaltype(outhospitaltype);
+						//String outhospitaltype = rst.getString("lyfs");
+						//rj.setOuthospitaltype(outhospitaltype);
+						/**
+						 * 离院方式改为调用电子病历系统
+						 */
+						Map<String,Integer> map = getOutHositalType(patientid_his, inhospitalcount);
+						if(map!=null && !map.isEmpty()){
+							//24小时内入出院
+							switch (map.get("IN_FLAG")) {
+							case 0:
+								//正常
+								if(map.get("OUTSTATUS")!=null){
+									switch (map.get("OUTSTATUS")) {
+									case 1:
+										rj.setOuthospitaltype(1);
+										break;
+									case 2:
+										rj.setOuthospitaltype(2);
+										break;
+									case 3:
+										rj.setOuthospitaltype(3);
+										break;
+									case 4:
+										rj.setOuthospitaltype(4);
+										break;
+									case 5:
+										rj.setOuthospitaltype(5);
+										break;
+									case 9:
+										rj.setOuthospitaltype(7);
+										break;
+									}
+								}else{
+									rj.setOuthospitaltype(0);//未知
+								}
+								break;
+							case 1:		
+								//24小时内入出院
+								rj.setOuthospitaltype(6);
+								break;
+							}
+						}else{
+							rj.setOuthospitaltype(0);//未知
+						}
 						// 档案号
 						// String filenumber = rst.getString("filenumber");
 						// 出院中医诊断疾病名称
@@ -1055,6 +1098,71 @@ public class ZhangQiuOldHisHandler {
 		return list;
 	}
 
+	private Map<String,Integer> getOutHositalType(String patientHisId, String inhospitalcount) {
+		Connection conn = getNewEMRConn();
+		Statement stmt = null;
+		ResultSet rs = null;
+		Map<String,Integer> map = new HashMap<String, Integer>();
+		try {
+			String sql = "SELECT OUTSTATUS, IN_FLAG FROM InOrOuthospitalinfoList_bl WHERE PATIENTID_HIS = '"+patientHisId+"' AND IN_COUNT = '"+inhospitalcount+"' AND IN_STATUS = 2";
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery(sql);
+			if (rs.next()) {
+				if(ValidateUtil.isNotNull(rs.getString("OUTSTATUS"))){
+					map.put("OUTSTATUS", rs.getInt("OUTSTATUS"));
+				}else{
+					map.put("OUTSTATUS", null);
+				}
+				if(ValidateUtil.isNotNull(rs.getString("IN_FLAG"))){
+					map.put("IN_FLAG", rs.getInt("IN_FLAG"));
+				}else{
+					map.put("IN_FLAG", null);
+				}
+			}
+			return map;
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+            try {
+            if(rs !=null)rs.close();
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        try {
+	            if(stmt !=null)stmt.close();
+	        } catch (Exception e) {
+	        	e.printStackTrace();
+	        }
+	        try {
+	            if(conn !=null)conn.close();
+	        } catch (Exception e) {
+	        	e.printStackTrace();
+	        }
+		
+		}
+		return null;
+	}
+	
+	private static Connection getNewEMRConn() {
+		String ip = "192.168.1.13";
+		String sid = "JHEMR";
+		String port = "1521";
+		String dbUser = "jhdisease";
+		String dbPassword = "jhdisease";
+		String driver = "oracle.jdbc.driver.OracleDriver";
+		String url = "jdbc:oracle:thin:@" + ip + ":" + port + ":" + sid;
+		Connection conn = null;
+		try {
+			Class.forName(driver);
+			conn = DriverManager.getConnection(url, dbUser, dbPassword);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return conn;
+	}
+	
 	private static Connection getEMRConn() {
 		String ip = "192.168.1.21";
 		String sid = "jhemr";
@@ -1169,8 +1277,8 @@ public class ZhangQiuOldHisHandler {
 	private Patient setPatient(RzzyyJbgl rj){
 		//将数据插入患者表
 		String cardnum = rj.getCardnum();
-		//如果是儿童，并且有身份证
-		if((CardNumUtil.isValidate18Idcard(cardnum))&&(((ValidateUtil.isEquals("岁", rj.getAgeunit())) && rj.getAge()<=AGE)||(!ValidateUtil.isEquals("岁", rj.getAgeunit())))){
+		//如果为儿童
+		if(((ValidateUtil.isEquals("岁", rj.getAgeunit())) && rj.getAge()<=AGE)||(!ValidateUtil.isEquals("岁", rj.getAgeunit()))){
 			String cardnumold = "";
 			if(rj.getBirthday()==null){ 
 				cardnumold = "temp"+HashUtil.MD5Hashing(rj.getName());
@@ -1180,55 +1288,109 @@ public class ZhangQiuOldHisHandler {
 			Map<String,Object> para = new HashMap<>();
 			para.put("cardnum", cardnumold);
 			Patient pt = patientOldMapper.getPatient(para);
-			if(pt != null){
-				para = new HashMap<>();
-				para.put("cardnum", cardnum);
-				Patient patientupdate = patientOldMapper.getPatient(para);
-				if (patientupdate!=null) {
-					//将所有以前关联MD5的出院表的身份证号替换成新的身份证号
+			//儿童且身份证正确
+			if(CardNumUtil.isValidate18Idcard(cardnum)){
+				//如果是儿童且患者表存在(临时身份证)
+				if(pt != null){
 					para = new HashMap<>();
-					para.put("cardnum", cardnumold);
-					List<Outofthehospitalinhospitalinformation> outofthehospitalinhospitalinformationupdateList = outofthehospitalinhospitalinformationOldMapper.getOutList(para);
-					for (Outofthehospitalinhospitalinformation outofthehospitalinhospitalinformationupdate : outofthehospitalinhospitalinformationupdateList) {
-						outofthehospitalinhospitalinformationupdate.setCardnum(cardnum);
-						//查询对应出院的随访列表集合
+					para.put("cardnum", cardnum);
+					Patient cp = patientOldMapper.getPatient(para);
+					//老数据无匹配身份证儿童患者
+					if(cp==null){
+						setPatientData(rj, cardnum, pt);
+						patientOldMapper.updatePatient(pt);
+						//将所有以前关联MD5的出院表的身份证号替换成新的身份证号
 						para = new HashMap<>();
-						para.put("outofthehospitalinhospitalinformationid", outofthehospitalinhospitalinformationupdate.getId());
-						para.put("datasources", "医院患者");
-						List<Followup> followupupdateList = followupOldMapper.getFollowupList(para);
-						for (Followup followupupdate : followupupdateList) {
-							//替换成新的患者ID
-							followupupdate.setPatientid(patientupdate.getId());
-							followupOldMapper.updateFollowup(followupupdate);
+						para.put("cardnum", cardnumold);
+						List<Outofthehospitalinhospitalinformation> outDataList = outofthehospitalinhospitalinformationOldMapper.getOutList(para);
+						for (Outofthehospitalinhospitalinformation out : outDataList) {
+							out.setCardnum(cardnum);
+							outofthehospitalinhospitalinformationOldMapper.updateOut(out);
+							//查询对应出院的随访列表集合
+							para = new HashMap<>();
+							para.put("outofthehospitalinhospitalinformationid", out.getId());
+							para.put("datasources", "医院患者");
+							List<Followup> followupupdataList = followupOldMapper.getFollowupList(para);
+							for (Followup followupupData : followupupdataList) {
+								//替换成新的患者ID
+								followupupData.setPatientid(pt.getId());
+								followupOldMapper.updateFollowup(followupupData);
+							}
 						}
-						outofthehospitalinhospitalinformationOldMapper.updateOut(outofthehospitalinhospitalinformationupdate);
-					}
-					//MD5患者记录的修改号同步到新的有身份证的记录中
-					if (ValidateUtil.isNotNull(pt.getPhonethree())) {
-						if (ValidateUtil.isNull(patientupdate.getPhonethree())) {
-							patientupdate.setPhonethree(pt.getPhonethree());
-							patientOldMapper.updatePatient(patientupdate);
+						return pt;
+					}else{	
+						//老数据有身份证儿童患者
+						setPatientData(rj, cardnum, cp);
+						patientOldMapper.updatePatient(cp);
+						//将所有以前关联MD5的出院表的身份证号替换成新的身份证号
+						para = new HashMap<>();
+						para.put("cardnum", cardnumold);
+						List<Outofthehospitalinhospitalinformation> outDataList = outofthehospitalinhospitalinformationOldMapper.getOutList(para);
+						for (Outofthehospitalinhospitalinformation out : outDataList) {
+							out.setCardnum(cardnum);
+							outofthehospitalinhospitalinformationOldMapper.updateOut(out);
+							//查询对应出院的随访列表集合
+							para = new HashMap<>();
+							para.put("outofthehospitalinhospitalinformationid", out.getId());
+							para.put("datasources", "医院患者");
+							List<Followup> followupupdataList = followupOldMapper.getFollowupList(para);
+							for (Followup followupupData : followupupdataList) {
+								//替换成新的患者ID
+								followupupData.setPatientid(cp.getId());
+								followupOldMapper.updateFollowup(followupupData);
+							}
 						}
+						return cp;
 					}
+				}else{//如果儿童患者表不存在(临时身份证)患者
+					para = new HashMap<>();
+					para.put("cardnum", cardnum);
+					Patient cp = patientOldMapper.getPatient(para);
+					if(cp==null){
+						cp = new Patient();
+						setPatientData(rj, cardnum, cp);
+						patientOldMapper.setPatient(cp);
+					}else{
+						//老数据存在(身份证)患者 直接返回
+						setPatientData(rj, cardnum, cp);
+						patientOldMapper.updatePatient(cp);
+					}
+					return cp;
+				}
+			}else{
+				//如果是儿童身份证不正确
+				if(pt !=null){
+					//存在更新数据（身份证号不更新）
+					setPatientData(rj, cardnumold, pt);
+					patientOldMapper.updatePatient(pt);
+					return pt;
+				}else{
+					//如果不存在则创建临时身份证患者
+					Patient p = new Patient();
+					setPatientData(rj, cardnumold, p);
+					patientOldMapper.setPatient(p);
+					return p;
 				}
 			}
-		}
-		
-		//如果是新儿童,且没有身份证号
-		if((!CardNumUtil.isValidate18Idcard(cardnum)) && (((ValidateUtil.isEquals("岁", rj.getAgeunit())) && rj.getAge()<=AGE)||(!ValidateUtil.isEquals("岁", rj.getAgeunit())))){
-			if(rj.getBirthday()==null){
-				cardnum = "temp"+HashUtil.MD5Hashing(rj.getName());
-			}else{
-				cardnum = "temp"+HashUtil.MD5Hashing(rj.getName()+DateUtil.format(rj.getBirthday(), "yyyyMMdd"));
+		}else{//非儿童患者
+			Patient p = new Patient();//患者实体
+			Map <String,Object> para = new HashMap<>();
+			para.put("cardnum", cardnum);
+			Patient pt = patientOldMapper.getPatient(para);
+			if(pt != null){
+				p = pt;
 			}
+			setPatientData(rj, cardnum, p);
+			if(pt == null){
+				patientOldMapper.setPatient(p);
+			}else{//存在就更新
+				patientOldMapper.updatePatient(p);
+			}
+			return p;
 		}
-		Patient p = new Patient();//患者实体
-		Map <String,Object> para = new HashMap<>();
-		para.put("cardnum", cardnum);
-		Patient pt = patientOldMapper.getPatient(para);
-		if(pt != null){
-			p = pt;
-		}
+	}
+
+	private void setPatientData(RzzyyJbgl rj, String cardnum, Patient p) {
 		p.setCardnum(cardnum);
 		p.setAge(rj.getAge());
 		p.setNation(rj.getNation());
@@ -1249,12 +1411,6 @@ public class ZhangQiuOldHisHandler {
 		p.setPhoneone(rj.getPatientphone());
 		//wangsongyuan 新增章丘HIS患者ID 20180912
 		p.setPatientHisId(rj.getPatientid_his());
-		if(pt == null){
-			patientOldMapper.setPatient(p);
-		}else{//存在就更新
-			patientOldMapper.updatePatient(p);
-		}
-		return p;
 	}
 	
 	private void setOutHospital(RzzyyJbgl rj,Department department,Patient p){
@@ -1351,7 +1507,8 @@ public class ZhangQiuOldHisHandler {
 		outh.setOuthospitalotherdiagnosenamefive(rj.getOuthospitalotherdiagnosenamefive());
 		outh.setOwncost(rj.getOwncost());
 		outh.setHealthinsurancecost(rj.getHealthinsurancecost());
-		//outh.setSchedulingstate(outh.getSchedulingstate());
+		//离院方式
+		outh.setOuthospitaltype(rj.getOuthospitaltype());
 		//wangsongyuan 新增状态值  2018-5-11
 		outh.setHisrecordstate(rj.getIsStatus());
 		//wangsongyuan HIS患者ID 2018-5-11
@@ -1365,6 +1522,11 @@ public class ZhangQiuOldHisHandler {
 		//wangsongyuan 疾病病种 20181115
 		outh.setChronicDiseaseId(rj.getChronicDiseaseId());
 		if(outofthehospitalinhospitalinformation != null){
+			//未排期且非医嘱离院、医嘱转院、死亡、24小时内出院，直接设置为勿访，并标记勿访原因，更改操作时间
+			if(outh.getSchedulingstate()==1&&(rj.getOuthospitaltype()==2||rj.getOuthospitaltype()==4||rj.getOuthospitaltype()==5||rj.getOuthospitaltype()==6)){
+				outh.setSchedulingstate(3);
+				outh.setDonotvisitthecause("非管理患者，系统自动设置为勿访！");
+			}
 			/*if(rj.getOuthospitaldateclose() != null && !rj.getOuthospitaldateclose().equals(oldOuthospitaldateclose)){
 				outh.setOuthospitaldateclose(oldOuthospitaldateclose);
 			}*/
@@ -1380,6 +1542,11 @@ public class ZhangQiuOldHisHandler {
 				}
 			}
 		}else{
+			//非医嘱离院、医嘱转院、死亡、24小时内出院，直接设置为勿访，并标记勿访原因，更改操作时间
+			if(rj.getOuthospitaltype()==2||rj.getOuthospitaltype()==4||rj.getOuthospitaltype()==5||rj.getOuthospitaltype()==6){
+				outh.setSchedulingstate(3);
+				outh.setDonotvisitthecause("非管理患者，系统自动设置为勿访！");
+			}
 			outofthehospitalinhospitalinformationOldMapper.setOut(outh);
 		}
 	}

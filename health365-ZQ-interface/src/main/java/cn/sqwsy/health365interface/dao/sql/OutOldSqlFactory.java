@@ -175,7 +175,7 @@ public class OutOldSqlFactory {
 	    	}
 	    	
 	    	//离院方式
-	    	if(ValidateUtil.isNotNull(out.getOuthospitaltype())){
+	    	if(out.getOuthospitaltype()!=null){
 	    		sql.VALUES("outhospitaltype", "#{outhospitaltype}");
 	    	}
 	    	
@@ -184,7 +184,10 @@ public class OutOldSqlFactory {
 	    		sql.VALUES("Schedulingstate", "#{Schedulingstate}");
 	    	}
 	    	
-	    	//private String donotvisitthecause;//勿访原因
+	    	//勿访原因
+	    	if(ValidateUtil.isNotNull(out.getDonotvisitthecause())){
+	    		sql.VALUES("donotvisitthecause", "#{donotvisitthecause}");
+	    	}
 	    	
 	    	//病理诊断名称
 	    	if(ValidateUtil.isNotNull(out.getPathologydiagnosename())){
@@ -436,7 +439,7 @@ public class OutOldSqlFactory {
 	    	}
 	    	
 	    	//离院方式
-	    	if(ValidateUtil.isNotNull(out.getOuthospitaltype())){
+	    	if(out.getOuthospitaltype()!=null){
 	    		 sql.SET("outhospitaltype=#{outhospitaltype}");
 	    	}
 	    	
@@ -445,7 +448,10 @@ public class OutOldSqlFactory {
 	    		 sql.SET("Schedulingstate=#{Schedulingstate}");
 	    	}
 	    	
-	    	//private String donotvisitthecause;//勿访原因
+	    	//勿访原因
+	    	if(ValidateUtil.isNotNull(out.getDonotvisitthecause())){
+	    		sql.SET("donotvisitthecause=#{donotvisitthecause}");
+	    	}
 	    	
 	    	//病理诊断名称
 	    	if(ValidateUtil.isNotNull(out.getPathologydiagnosename())){

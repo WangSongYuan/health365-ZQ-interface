@@ -41,7 +41,7 @@ public class RzzyyJbgl extends PO {
 	private String drugallergy;//有无药物过敏
 	private String allergydrug;//过敏药物
 	private String rh;//RH
-	private String outhospitaltype;//离院方式
+	private Integer outhospitaltype;//0、未知1、医嘱离院	2、医嘱转院	3、医嘱转社区卫生服务机构/乡镇卫生院	4、非医嘱离院	5、死亡 	6、24小时内出院 	7、其他
 	private String pathologydiagnosename;//病理诊断名称
 	private String pathologydiagnosecode;//病理诊断码
 	private String inhospitalway;//入院途径
@@ -439,13 +439,13 @@ public class RzzyyJbgl extends PO {
 	/**
 	 * @return the outhospitaltype
 	 */
-	public String getOuthospitaltype() {
+	public Integer getOuthospitaltype() {
 		return outhospitaltype;
 	}
 	/**
 	 * @param outhospitaltype the outhospitaltype to set
 	 */
-	public void setOuthospitaltype(String outhospitaltype) {
+	public void setOuthospitaltype(Integer outhospitaltype) {
 		this.outhospitaltype = outhospitaltype;
 	}
 	/**

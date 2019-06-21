@@ -37,7 +37,7 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	private String allergydrug;//过敏药物
 	private String bloodtype;//血型
 	private String rh;//RH
-	private String outhospitaltype;//离院方式(医嘱离院,医嘱转院,医嘱转社区卫生服务机构/乡镇卫生院,非医嘱离院,死亡,其他)
+	private Integer outhospitaltype;//0、未知1、医嘱离院	2、医嘱转院	3、医嘱转社区卫生服务机构/乡镇卫生院	4、非医嘱离院	5、死亡 	6、24小时内出院 	7、其他
 	private Integer Schedulingstate=1;//排期状态1.未排期2.已排期3.勿访4.24小时内出院等5.排期过期(24小时前医生未排期的直接设置成排期过期)
 	private String donotvisitthecause;//勿訪原因
 	private String pathologydiagnosename;//病理诊断名称
@@ -287,10 +287,10 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	public void setRh(String rh) {
 		this.rh = rh;
 	}
-	public String getOuthospitaltype() {
+	public Integer getOuthospitaltype() {
 		return outhospitaltype;
 	}
-	public void setOuthospitaltype(String outhospitaltype) {
+	public void setOuthospitaltype(Integer outhospitaltype) {
 		this.outhospitaltype = outhospitaltype;
 	}
 	public Integer getSchedulingstate() {
@@ -299,7 +299,6 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	public void setSchedulingstate(Integer schedulingstate) {
 		Schedulingstate = schedulingstate;
 	}
-	
 	public String getDonotvisitthecause() {
 		return donotvisitthecause;
 	}
