@@ -760,6 +760,7 @@ public class ZhangQiuOldHisHandler {
 			hiserr.setInhospitalcount(rj.getInhospitalcount());
 			hiserr.setStatus(0);
 			if(hisError != null){
+				hiserr.setUpdatetime(new Timestamp(System.currentTimeMillis()));
 				hisErrorOldMapper.updateHisError(hiserr);
 			}else{
 				hisErrorOldMapper.setHisError(hiserr);
@@ -781,45 +782,54 @@ public class ZhangQiuOldHisHandler {
 		ap.append( "当前时间："+df.format(new Date())+"您有新的消息:</br>科室:"+rj.getInhospitaldepartment()+",主治医师:"+rj.getMaindoctorname()+",患者姓名:"+rj.getName()+"</br>住院号:"+rj.getInhospitalid()+",住院次数:"+rj.getInhospitalcount()+"</br>错误信息如下:</br>");
 		if(ValidateUtil.isNull(rj.getJobnum())){
 			ap.append("</br>工号为空</br>");
+			ap.append("</br>请联系信息科核实！</br>");
 			return true;
 		}
 		//新增未分配管床医生
 		if(ValidateUtil.isNull(rj.getMaindoctorid())){
 			ap.append("</br>未分配管床医生</br>");
+			ap.append("</br>请联系信息科核实！</br>");
 			return true;
 		}
 		//如果不是小孩，且身份证号为空
 		if(ValidateUtil.isNull(rj.getCardnum()) && ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE){
 			ap.append("</br>身份证号为空</br>");
+			ap.append("</br>请联系住院处补充身份证号码，补充后等待数据同步。在病案首页补充无效！</br>");
 			return true;
 		}else{
 			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isLength(rj.getCardnum())){
 				ap.append("</br>身份证号长度不为18位</br>");
+				ap.append("</br>请和患者确认正确的身份证号码，并联系住院处修改身份证号码，修改后等待数据同步。在病案首页修改无效！</br>");
 				return true;
 			}
 			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isCard17(rj.getCardnum())){
 				ap.append("</br>身份证号前17位不为纯数字</br>");
+				ap.append("</br>请和患者确认正确的身份证号码，并联系住院处修改身份证号码，修改后等待数据同步。在病案首页修改无效！</br>");
 				return true;
 			}
 			if(ValidateUtil.isEquals("岁", rj.getAgeunit()) && rj.getAge()>AGE && !CardNumUtil.isCheckCode(rj.getCardnum())){
 				ap.append("</br>身份证号校验码错误</br>");
+				ap.append("</br>请和患者确认正确的身份证号码，并联系住院处修改身份证号码，修改后等待数据同步。在病案首页修改无效！</br>");
 				return true;
 			}
 		}
 		//手机号空
 		if(ValidateUtil.isNull(rj.getPatientphone()) && ValidateUtil.isNull(rj.getRelationphone())){
 			ap.append("</br>手机号为空</br>");
+			ap.append("</br>请联系住院处补充患者的手机号码，补充后等待数据同步。在病案首页补充无效！</br>");
 			return true;
 		}else{
 			//手机号错误
 			if(!isNum(rj.getPatientphone()) && !isNum(rj.getRelationphone())){
 				ap.append("</br>手机号填写错误</br>");
+				ap.append("</br>请和患者确认正确的手机号码，并联系住院处修改手机号码，修改后等待数据同步。在病案首页修改无效！</br>");
 				return true;
 			}
 		}
 		//传入的HIS科室ID为空
 		if(ValidateUtil.isNull(rj.getInhospitaldepartmentid())){
 			ap.append("</br>HIS传入的科室ID为空</br>");
+			ap.append("</br>请联系信息科核实！</br>");
 			return true;
 		}	
 		return false;
