@@ -1540,6 +1540,7 @@ public class ZhangQiuOldHisHandler {
 			/*if(rj.getOuthospitaldateclose() != null && !rj.getOuthospitaldateclose().equals(oldOuthospitaldateclose)){
 				outh.setOuthospitaldateclose(oldOuthospitaldateclose);
 			}*/
+			outh.setUpdatetime(new Timestamp(System.currentTimeMillis()));
 			outofthehospitalinhospitalinformationOldMapper.updateOut(outh);
 			if(outh.getSchedulingstate() == 2){
 				para = new HashMap<>();
