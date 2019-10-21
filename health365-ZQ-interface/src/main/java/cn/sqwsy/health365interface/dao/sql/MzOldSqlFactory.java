@@ -79,6 +79,7 @@ public class MzOldSqlFactory {
 	        if(out.getClinic_label()!=null){
 	    		sql.VALUES("clinic_label", "#{clinic_label}");
 	    	}
+	        sql.VALUES("schedulingState", "#{schedulingState}");
     		sql.VALUES("createTime", "#{createTime}");
     		sql.VALUES("isValid", "#{isValid}");
 	        return sql.toString();
