@@ -1,6 +1,5 @@
 package cn.sqwsy.health365interface.dao.mapper;
 
-import java.util.List;
 import java.util.Map;
 
 import org.apache.ibatis.annotations.InsertProvider;
@@ -16,9 +15,6 @@ public interface MzOldMapper {
 	@SelectProvider(type=MzOldSqlFactory.class,method="getMz")
 	OutpatientServiceInfo getMz(Map<String, Object> para);
 	
-	@SelectProvider(type=MzOldSqlFactory.class,method="getMzList")
-	List<OutpatientServiceInfo> getMzList(Map<String,Object> para);
-
 	@InsertProvider(type = MzOldSqlFactory.class, method = "setMz")
     @Options(useGeneratedKeys = true, keyProperty = "id")
 	void setMz(OutpatientServiceInfo mz);

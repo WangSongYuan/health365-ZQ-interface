@@ -41,6 +41,7 @@ public class RzzyyJbgl extends PO {
 	private String drugallergy;//有无药物过敏
 	private String allergydrug;//过敏药物
 	private String rh;//RH
+	//outhospitaltype广西二附院为String类型
 	private Integer outhospitaltype;//0、未知1、医嘱离院	2、医嘱转院	3、医嘱转社区卫生服务机构/乡镇卫生院	4、非医嘱离院	5、死亡 	6、24小时内出院 	7、其他
 	private String pathologydiagnosename;//病理诊断名称
 	private String pathologydiagnosecode;//病理诊断码
@@ -111,6 +112,9 @@ public class RzzyyJbgl extends PO {
 	private Integer isStatus = 1;//1院中 2院后
 	private Integer exclusiveInterview=1;//章丘新增随访类别：0科室随访，1疾病与健康管理中心随访 默认疾病与健康管理中心随访
 	private Integer chronicDiseaseId;//病种表ID
+	//广西医科大学第二附属医院新增字段
+	private String PatNo;//就诊卡号
+	private String CardNo;//患者登记号
 	
 	/**
 	 * @return the id
@@ -1090,5 +1094,17 @@ public class RzzyyJbgl extends PO {
 	}
 	public void setChronicDiseaseId(Integer chronicDiseaseId) {
 		this.chronicDiseaseId = chronicDiseaseId;
+	}
+	public String getPatNo() {
+		return PatNo;
+	}
+	public void setPatNo(String patNo) {
+		PatNo = patNo;
+	}
+	public String getCardNo() {
+		return CardNo;
+	}
+	public void setCardNo(String cardNo) {
+		CardNo = cardNo;
 	}
 }

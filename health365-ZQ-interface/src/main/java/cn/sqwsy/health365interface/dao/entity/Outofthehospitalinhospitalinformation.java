@@ -37,6 +37,7 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	private String allergydrug;//过敏药物
 	private String bloodtype;//血型
 	private String rh;//RH
+	//outhospitaltype广西二附院为String类型
 	private Integer outhospitaltype;//0、未知1、医嘱离院	2、医嘱转院	3、医嘱转社区卫生服务机构/乡镇卫生院	4、非医嘱离院	5、死亡 	6、24小时内出院 	7、其他
 	private Integer Schedulingstate=1;//排期状态1.未排期2.已排期3.勿访4.24小时内出院等5.排期过期(24小时前医生未排期的直接设置成排期过期)
 	private String donotvisitthecause;//勿訪原因
@@ -101,6 +102,10 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	private Integer hospitaldictionaryid;//医院字典表ID 转出后才会设置
 	private String hospitalcoding;//转出的医院编码
 	private Timestamp referralTime;//wangsongyuan 新增下转时间 20190212
+	//广西医科大学第二附属医院新增字段
+	private String visitnum;//就诊号
+	private String PatNo;//患者登记号
+	private String CardNo;//就诊卡号
 	public String getOuthospitaldiagnoseall() {
 		return outhospitaldiagnoseall;
 	}
@@ -593,5 +598,23 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	}
 	public void setReferralTime(Timestamp referralTime) {
 		this.referralTime = referralTime;
+	}
+	public String getVisitnum() {
+		return visitnum;
+	}
+	public void setVisitnum(String visitnum) {
+		this.visitnum = visitnum;
+	}
+	public String getPatNo() {
+		return PatNo;
+	}
+	public void setPatNo(String patNo) {
+		PatNo = patNo;
+	}
+	public String getCardNo() {
+		return CardNo;
+	}
+	public void setCardNo(String cardNo) {
+		CardNo = cardNo;
 	}
 }

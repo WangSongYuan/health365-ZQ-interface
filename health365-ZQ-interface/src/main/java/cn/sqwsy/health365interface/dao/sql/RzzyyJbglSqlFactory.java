@@ -5,6 +5,7 @@ import java.util.Map;
 import org.apache.ibatis.jdbc.SQL;
 
 import cn.sqwsy.health365interface.dao.entity.RzzyyJbgl;
+import cn.sqwsy.health365interface.service.utils.ValidateUtil;
 
 public class RzzyyJbglSqlFactory {
 	public String getRzzyyJbgl(Map<String, Object> para){
@@ -16,6 +17,9 @@ public class RzzyyJbglSqlFactory {
 	        }
 	        if(para.get("inhospitalcount")!=null&&!para.get("inhospitalcount").equals("")){
 	        	sql.WHERE("inhospitalcount="+para.get("inhospitalcount"));
+	        }
+	        if(para.get("visitnum")!=null&&!para.get("visitnum").equals("")){
+	        	sql.WHERE("visitnum='"+para.get("visitnum")+"'");
 	        }
 	        return sql.toString();
 	}
@@ -335,6 +339,16 @@ public class RzzyyJbglSqlFactory {
 	    		sql.VALUES("chronicDiseaseId", "#{chronicDiseaseId}");
 	    	}
 	    	sql.VALUES("ispigeonhole", "#{ispigeonhole}");
+	    	//广西二附院新增字段
+	    	if(ValidateUtil.isNotNull(inhospital.getVisitnum())){
+	    		sql.VALUES("visitnum", "#{visitnum}");
+	    	}
+	    	if(ValidateUtil.isNotNull(inhospital.getPatNo())){
+	    		sql.VALUES("PatNo", "#{PatNo}");
+	    	}
+	    	if(ValidateUtil.isNotNull(inhospital.getCardNo())){
+	    		sql.VALUES("CardNo", "#{CardNo}");
+	    	}
 	        return sql.toString();
 	}
 	
@@ -644,6 +658,16 @@ public class RzzyyJbglSqlFactory {
 		    		sql.SET("chronicDiseaseId = #{chronicDiseaseId}");
 		    	}
 		    	sql.SET("ispigeonhole=#{ispigeonhole}");
+		    	//广西二附院新增字段
+		    	if(ValidateUtil.isNotNull(inhospital.getVisitnum())){
+		    		sql.SET("visitnum=#{visitnum}");
+		    	}
+		    	if(ValidateUtil.isNotNull(inhospital.getPatNo())){
+		    		sql.SET("PatNo=#{PatNo}");
+		    	}
+		    	if(ValidateUtil.isNotNull(inhospital.getCardNo())){
+		    		sql.SET("CardNo=#{CardNo}");
+		    	}
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();
 	

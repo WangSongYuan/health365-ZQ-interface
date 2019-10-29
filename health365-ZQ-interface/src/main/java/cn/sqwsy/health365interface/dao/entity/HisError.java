@@ -17,6 +17,8 @@ public class HisError extends PO{
 	private transient boolean selected = false;
 	private String patientid_his;//HIS患者ID
 	private Integer inhospitalcount;//住院次数
+	private String zy_code;//住院表唯一标识
+	
 	
 	public Integer getId() {
 		return id;
@@ -107,5 +109,11 @@ public class HisError extends PO{
 	}
 	public void setInhospitalcount(Integer inhospitalcount) {
 		this.inhospitalcount = inhospitalcount;
+	}
+	public String getZy_code() {
+		return zy_code;
+	}
+	public void setZy_code(String zy_code) {
+		this.zy_code = zy_code;
 	}
 }

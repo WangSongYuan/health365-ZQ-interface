@@ -5,6 +5,7 @@ import java.util.Map;
 import org.apache.ibatis.jdbc.SQL;
 
 import cn.sqwsy.health365interface.dao.entity.HisError;
+import cn.sqwsy.health365interface.service.utils.ValidateUtil;
 
 public class HisErrorSqlFactory {
 	public String getHisError(Map<String, Object> para){
@@ -17,6 +18,12 @@ public class HisErrorSqlFactory {
 	        if(para.get("inhospitalcount")!=null&&!para.get("inhospitalcount").equals("")){
 	        	sql.WHERE("inhospitalcount='"+para.get("inhospitalcount")+"'");
 	        }
+	        if(para.get("thirdpartyhisid")!=null&&!para.get("thirdpartyhisid").equals("")){
+	        	sql.WHERE("thirdpartyhisid='"+para.get("thirdpartyhisid")+"'");
+	        }
+	        if(para.get("zy_code")!=null&&!para.get("zy_code").equals("")){
+	        	sql.WHERE("zy_code='"+para.get("zy_code")+"'");
+	        }
 	        return sql.toString();
 	}
 	
@@ -27,12 +34,17 @@ public class HisErrorSqlFactory {
     		sql.VALUES("maindoctorid", "#{maindoctorid}");
     		sql.VALUES("msg", "#{msg}");
     		sql.VALUES("thirdpartyhisid", "#{thirdpartyhisid}");
-    		sql.VALUES("patientid_his", "#{patientid_his}");
-    		sql.VALUES("inhospitalcount", "#{inhospitalcount}");
+    		if(ValidateUtil.isNotNull(hisError.getPatientid_his())){
+    			sql.VALUES("patientid_his", "#{patientid_his}");
+    		}
+    		if(hisError.getInhospitalcount()!=null){
+    			sql.VALUES("inhospitalcount", "#{inhospitalcount}");
+    		}
     		sql.VALUES("status", "#{status}");
     		sql.VALUES("ismakeup", "#{ismakeup}");
     		sql.VALUES("createtime", "#{createtime}");
     		sql.VALUES("updatetime", "#{updatetime}");
+    		sql.VALUES("zy_code", "#{zy_code}");
 	        sql.WHERE("id=#{id}");
 			return sql.toString();
 	}
@@ -44,11 +56,16 @@ public class HisErrorSqlFactory {
 		sql.SET("maindoctorid = #{maindoctorid}");
 		sql.SET("msg = #{msg}");
 		sql.SET("thirdpartyhisid = #{thirdpartyhisid}");
-		sql.SET("patientid_his = #{patientid_his}");
-		sql.SET("inhospitalcount = #{inhospitalcount}");
+		if(ValidateUtil.isNotNull(hisError.getPatientid_his())){
+			sql.SET("patientid_his = #{patientid_his}");
+		}
+		if(hisError.getInhospitalcount()!=null){
+			sql.SET("inhospitalcount = #{inhospitalcount}");
+		}
 		sql.SET("status = #{status}");
 		sql.SET("ismakeup = #{ismakeup}");
 		sql.SET("updatetime = #{updatetime}");
+		sql.SET("zy_code = #{zy_code}");
 		sql.WHERE("id=#{id}");
 		return sql.toString();
 	}

@@ -17,7 +17,10 @@ public class OutOldSqlFactory {
 	        	sql.WHERE("patientid_his='"+para.get("patientid_his")+"'");
 	        }
 	        if(para.get("inhospitalcount")!=null&&!para.get("inhospitalcount").equals("")){
-	        	sql.WHERE("inhospitalcount="+para.get("inhospitalcount"));
+	        	sql.WHERE("inhospitalcount='"+para.get("inhospitalcount")+"'");
+	        }
+	        if(para.get("visitnum")!=null&&!para.get("visitnum").equals("")){
+	        	sql.WHERE("visitnum='"+para.get("visitnum")+"'");
 	        }
 	        return sql.toString();
 	}
@@ -293,6 +296,17 @@ public class OutOldSqlFactory {
 //	    	private Integer hospitaldictionaryid;//医院字典表ID 转出后才会设置
 //	    	private String hospitalcoding;//转出的医院编码
 //	    	private Timestamp referralTime;//wangsongyuan 新增下转时间 20190212
+	    	
+	    	//广西二附院新增字段
+	    	if(ValidateUtil.isNotNull(out.getVisitnum())){
+	    		sql.VALUES("visitnum", "#{visitnum}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getPatNo())){
+	    		sql.VALUES("PatNo", "#{PatNo}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getCardNo())){
+	    		sql.VALUES("CardNo", "#{CardNo}");
+	    	}
 	        return sql.toString();
 	}
 	
@@ -554,7 +568,17 @@ public class OutOldSqlFactory {
 //	    	private Integer hospitaldictionaryid;//医院字典表ID 转出后才会设置
 //	    	private String hospitalcoding;//转出的医院编码
 //	    	private Timestamp referralTime;//wangsongyuan 新增下转时间 20190212
-	
+	    	
+	    	//广西二附院新增字段
+	    	if(ValidateUtil.isNotNull(out.getVisitnum())){
+	    		sql.SET("visitnum=#{visitnum}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getPatNo())){
+	    		sql.SET("PatNo=#{PatNo}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getCardNo())){
+	    		sql.SET("CardNo=#{CardNo}");
+	    	}
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();
 	}

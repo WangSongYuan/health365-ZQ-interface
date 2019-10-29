@@ -15,7 +15,9 @@ public class DepartmentOldSqlFactory {
    		sql.VALUES("content", "#{content}");
    		sql.VALUES("thirdpartyhisid", "#{thirdpartyhisid}");
    		sql.VALUES("status", "#{status}");
-   		sql.SET("exclusivestatus = #{exclusivestatus}");
+   		if(department.getExclusivestatus()!=null){
+   			sql.SET("exclusivestatus = #{exclusivestatus}");
+   		}
    		sql.SET("createtime = #{createtime}");
 			return sql.toString();
 	}
@@ -30,7 +32,9 @@ public class DepartmentOldSqlFactory {
 		sql.SET("content = #{content}");
 		sql.SET("thirdpartyhisid = #{thirdpartyhisid}");
 		sql.SET("status = #{status}");
-		sql.SET("exclusivestatus = #{exclusivestatus}");
+		if(department.getExclusivestatus()!=null){
+			sql.SET("exclusivestatus = #{exclusivestatus}");
+		}
 		sql.SET("updatetime = #{updatetime}");
 		sql.WHERE("id=#{id}");
 		return sql.toString();

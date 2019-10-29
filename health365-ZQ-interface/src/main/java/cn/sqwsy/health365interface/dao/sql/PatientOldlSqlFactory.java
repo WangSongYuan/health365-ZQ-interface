@@ -120,7 +120,9 @@ public class PatientOldlSqlFactory {
          	sql.SET("education = #{education}");
          	sql.SET("ageunit = #{ageunit}");
          	sql.SET("updatetime = #{updatetime}");
-         	sql.SET("wxState = #{wxState}");
+         	if(patient.getWxState()!=null){
+         		sql.SET("wxState = #{wxState}");
+         	}
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();
 	}
