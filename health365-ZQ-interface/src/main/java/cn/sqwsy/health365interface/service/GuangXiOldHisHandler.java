@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.jaxws.endpoint.dynamic.JaxWsDynamicClientFactory;
+import org.apache.cxf.transport.http.HTTPConduit;
+import org.apache.cxf.transports.http.configuration.HTTPClientPolicy;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
@@ -480,6 +482,12 @@ public class GuangXiOldHisHandler {
 	private Object callinginterface(String method,StringBuffer sb) {
 		JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
 		Client client = dcf.createClient("http://10.9.100.188/csp/dhcens/DHC.HMSS.BS.HisService.cls?wsdl");
+		HTTPConduit conduit = (HTTPConduit) client.getConduit();
+		HTTPClientPolicy policy = new HTTPClientPolicy();
+		long timeout = 10 * 60 * 1000;
+		policy.setConnectionTimeout(timeout);
+		policy.setReceiveTimeout(timeout);
+		conduit.setClient(policy);
 		Object[] objects = new Object[0];
 		try {
 			//System.out.println(sb.toString());
