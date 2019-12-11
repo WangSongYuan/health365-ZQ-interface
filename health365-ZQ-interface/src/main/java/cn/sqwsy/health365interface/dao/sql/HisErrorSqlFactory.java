@@ -15,6 +15,9 @@ public class HisErrorSqlFactory {
 	        if(para.get("patientid_his")!=null&&!para.get("patientid_his").equals("")){
 	        	sql.WHERE("patientid_his='"+para.get("patientid_his")+"'");
 	        }
+	        if(para.get("inhospitalid")!=null&&!para.get("inhospitalid").equals("")){
+	        	sql.WHERE("inhospitalid='"+para.get("inhospitalid")+"'");
+	        }
 	        if(para.get("inhospitalcount")!=null&&!para.get("inhospitalcount").equals("")){
 	        	sql.WHERE("inhospitalcount='"+para.get("inhospitalcount")+"'");
 	        }
@@ -37,6 +40,9 @@ public class HisErrorSqlFactory {
     		if(ValidateUtil.isNotNull(hisError.getPatientid_his())){
     			sql.VALUES("patientid_his", "#{patientid_his}");
     		}
+    		if(hisError.getInhospitalid()!=null){
+    			sql.VALUES("inhospitalid", "#{inhospitalid}");
+    		}
     		if(hisError.getInhospitalcount()!=null){
     			sql.VALUES("inhospitalcount", "#{inhospitalcount}");
     		}
@@ -58,6 +64,9 @@ public class HisErrorSqlFactory {
 		sql.SET("thirdpartyhisid = #{thirdpartyhisid}");
 		if(ValidateUtil.isNotNull(hisError.getPatientid_his())){
 			sql.SET("patientid_his = #{patientid_his}");
+		}
+		if(ValidateUtil.isNotNull(hisError.getInhospitalid())){
+			sql.SET("inhospitalid = #{inhospitalid}");
 		}
 		if(hisError.getInhospitalcount()!=null){
 			sql.SET("inhospitalcount = #{inhospitalcount}");

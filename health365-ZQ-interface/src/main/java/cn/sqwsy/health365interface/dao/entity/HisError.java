@@ -15,6 +15,7 @@ public class HisError extends PO{
 	private Timestamp updatetime = new Timestamp(System.currentTimeMillis());//用户信息更新时间
 	private String jobnum;//对应userinfo表jobnum字段
 	private transient boolean selected = false;
+	private String inhospitalid;//住院号
 	private String patientid_his;//HIS患者ID
 	private Integer inhospitalcount;//住院次数
 	private String zy_code;//住院表唯一标识
@@ -115,5 +116,11 @@ public class HisError extends PO{
 	}
 	public void setZy_code(String zy_code) {
 		this.zy_code = zy_code;
+	}
+	public String getInhospitalid() {
+		return inhospitalid;
+	}
+	public void setInhospitalid(String inhospitalid) {
+		this.inhospitalid = inhospitalid;
 	}
 }

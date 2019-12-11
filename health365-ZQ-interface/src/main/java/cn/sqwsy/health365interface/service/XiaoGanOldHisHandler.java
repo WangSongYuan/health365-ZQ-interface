@@ -1,8 +1,11 @@
 package cn.sqwsy.health365interface.service;
 
-import java.io.StringReader;
+import java.net.URLEncoder;
 import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -10,13 +13,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.cxf.endpoint.Client;
-import org.apache.cxf.jaxws.endpoint.dynamic.JaxWsDynamicClientFactory;
-import org.apache.cxf.transport.http.HTTPConduit;
-import org.apache.cxf.transports.http.configuration.HTTPClientPolicy;
-import org.dom4j.Document;
-import org.dom4j.Element;
-import org.dom4j.io.SAXReader;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.CookieStore;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.BasicCookieStore;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -43,12 +50,12 @@ import cn.sqwsy.health365interface.service.utils.CardNumUtil;
 import cn.sqwsy.health365interface.service.utils.DateUtil;
 import cn.sqwsy.health365interface.service.utils.HashUtil;
 import cn.sqwsy.health365interface.service.utils.ValidateUtil;
-
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 @Component
-@SuppressWarnings("all")
-public class GuangXiOldHisHandler {
+public class XiaoGanOldHisHandler {
 	private static final int AGE = 9;
-	
+	private static String ip = "172.16.120.98:801";
 	@Autowired
 	private RzzyyJbglOldMapper rzzyyJbglMapper;
 
@@ -76,29 +83,47 @@ public class GuangXiOldHisHandler {
 	@Autowired
 	private RzzyyEmrOldMapper rzzyyEmrOldMapper;
 
+	
+	private CloseableHttpClient httpClient;
 	@Scheduled(fixedDelay = 6000)
 	public void fixedRateJob() {
-		for (int i = 0; i <= 1; i++) {
-			Calendar outStartCal = Calendar.getInstance(); 
-			outStartCal.add(Calendar.DAY_OF_MONTH,-i);
-			outStartCal.set(Calendar.HOUR_OF_DAY, 0); 
-			outStartCal.set(Calendar.SECOND, 0); 
-			outStartCal.set(Calendar.MINUTE, 0); 
-			Date outSstartTime = outStartCal.getTime();
-			String outDateHomeStart = DateUtil.format(outSstartTime, "yyyy-MM-dd");
-			System.out.println("院后开始时间=【"+outDateHomeStart+"】");
-			//数据抓取结束时间
-			Calendar endCal = Calendar.getInstance(); 
-			endCal.add(Calendar.DAY_OF_MONTH,-i);
-			endCal.set(Calendar.HOUR_OF_DAY, 23); 
-			endCal.set(Calendar.SECOND, 59); 
-			endCal.set(Calendar.MINUTE, 59); 
-			Date endTime = endCal.getTime();
-			String dateHomeEnd = DateUtil.format(endTime, "yyyy-MM-dd");
-			
-			StringBuffer outnXmlbf = new StringBuffer("<request><starttime>");
-			outnXmlbf.append(outDateHomeStart).append("</starttime><endtime>").append(dateHomeEnd).append("</endtime><ctloc></ctloc></request>");
-			toXml(callinginterface("getOuthospitalList",outnXmlbf), 2);
+		CookieStore cookieStore = new BasicCookieStore();
+		httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
+		CloseableHttpResponse httpResponse = null;
+		HttpPost httpPost = new HttpPost("http://"+ip+"/api/Sys/EmpowerApplication/Login");
+		List<NameValuePair> list = new ArrayList<NameValuePair>();
+		list.add(new BasicNameValuePair("Code", "D5B916705DAE8AEA"));
+		list.add(new BasicNameValuePair("Pwd", "hc20180420"));
+		try{
+			if (list.size() > 0) {
+				UrlEncodedFormEntity entity = new UrlEncodedFormEntity(list, "utf-8");
+				httpPost.setEntity(entity);
+			}
+			httpResponse = httpClient.execute(httpPost);
+			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+				for (int i = 0; i <= 1; i++) {
+					Calendar outStartCal = Calendar.getInstance(); 
+					outStartCal.add(Calendar.DAY_OF_MONTH,i-1);
+					outStartCal.set(Calendar.HOUR_OF_DAY, 0); 
+					outStartCal.set(Calendar.SECOND, 0); 
+					outStartCal.set(Calendar.MINUTE, 0); 
+					Date outSstartTime = outStartCal.getTime();
+					String outDateHomeStart = DateUtil.format(outSstartTime, "yyyy-MM-dd");
+					
+					//数据抓取结束时间
+					Calendar endCal = Calendar.getInstance(); 
+					endCal.add(Calendar.DAY_OF_MONTH,i);
+					endCal.set(Calendar.HOUR_OF_DAY, 23); 
+					endCal.set(Calendar.SECOND, 59); 
+					endCal.set(Calendar.MINUTE, 59); 
+					Date endTime = endCal.getTime();
+					String dateHomeEnd = DateUtil.format(endTime, "yyyy-MM-dd");
+					
+					toJSON(callinginterface(outDateHomeStart,dateHomeEnd), 2);
+				}
+			}
+		}catch(Exception e){
+			e.printStackTrace();
 		}
 		
 		/***
@@ -129,7 +154,8 @@ public class GuangXiOldHisHandler {
 				continue;
 			}
 			Map<String,Object> para= new HashMap<>();
-			para.put("visitnum", rj.getVisitnum());
+			para.put("inhospitalid", rj.getInhospitalid());
+			para.put("inhospitalcount", rj.getInhospitalcount());
 			Outofthehospitalinhospitalinformation outofthehospitalinhospitalinformation = outofthehospitalinhospitalinformationOldMapper.getOut(para);
 			setOutHospital(rj, department, p,outofthehospitalinhospitalinformation);
 			rj.setIspigeonhole(2);
@@ -137,365 +163,520 @@ public class GuangXiOldHisHandler {
 		}
 	}
 	
-	private void toXml(Object object, Integer status){
-		SAXReader reader = new SAXReader();
-		Document document = null;
+	private void toJSON(JSONArray json, Integer status){
 		try {
-			document = reader.read(new StringReader(object.toString()), "utf-8");
-		} catch (Exception e) {
-			//e.printStackTrace();
-			System.out.println(object.toString());
-			return;
-		}
-		
-		if(document!=null){
-			try {
-				Element root = document.getRootElement();
-				Element out = root.element("RECODE");
-				if(out==null){
-					return;
+			for (int i = 0; i <json.size(); i++) {
+				JSONObject rst = json.getJSONObject(i);
+				// 住院号√
+				String inhospitalid = rst.getString("inhospitalid");
+				// 住院次数√
+				String inhospitalcount = rst.getString("inhospitalcount");
+
+				if (ValidateUtil.isNull(inhospitalid) && ValidateUtil.isNull(inhospitalcount)) {
+					continue;
 				}
-				List<Element> list = out.elements("Item");
-				for (int i = 0; i < list.size(); i++) {
-					try {
-						Element dataElements = list.get(i);
-						// 住院号
-						String inhospitalid = dataElements.element("inhospitalid").getText();
-						// 住院次数
-						String inhospitalcount = dataElements.element("inhospitalcount").getText();
-						
-						// 就诊号
-						String visitnum = dataElements.elementText("visitnum");
-						if (ValidateUtil.isNull(visitnum)) {
-							continue;
-						}
-						
-						RzzyyJbgl rj = new RzzyyJbgl();
-						Map<String, Object> para = new HashMap<>();
-						para.put("visitnum", visitnum);
-						RzzyyJbgl rzzyyJbgl = rzzyyJbglMapper.getRzzyyJbgl(para);
-						if (rzzyyJbgl != null) {
-							rj = rzzyyJbgl;
-						}
-						// 姓名
-						String name = dataElements.elementText("name");
-						// 性别
-						String sex = dataElements.elementText("sex");
-						if(status==2){
-							//院后
-							
-							//出院科室
-							String outhospitaldepartment = dataElements.element("outhospitaldepartment").getText();
-							rj.setOuthospitaldepartment(outhospitaldepartment);
-							//出院科室ID
-							String outhospitaldepartmentid = dataElements.element("outhospitaldepartmentid").getText();
-							rj.setOuthospitaldepartmentid(outhospitaldepartmentid);
-							//首页出院日期(患者离院日期)
-							String outhospitaldatehome = dataElements.element("outhospitaldatehome").getText();
-							Date parse = DateUtil.parse(outhospitaldatehome, "yyyy-MM-dd hh:mm:ss");
-							Timestamp timesTamp = DateUtil.getSqlTimestamp(parse);
-							rj.setOuthospitaldatehome(timesTamp);
-							//结算出院日期
-							String outhospitaldateclose = dataElements.element("outhospitaldateclose").getText();
-							if (ValidateUtil.isNotNull(outhospitaldateclose)) {
-								Date inhospitaldateDate = DateUtil.parse(outhospitaldateclose, "yyyy-MM-dd hh:mm:ss");
-								Timestamp outhospitaldatecloseTimesTamp = DateUtil.getSqlTimestamp(inhospitaldateDate);
-								rj.setOuthospitaldateclose(outhospitaldatecloseTimesTamp);
-							}else{
-								rj.setOuthospitaldateclose(timesTamp);
-							}
-							//出院诊断
-							String outhospitaldiagnose = dataElements.element("outhospitaldiagnose").getText();
-							rj.setOuthospitaldiagnose(outhospitaldiagnose);
-							//出院诊断ICD码
-							String outhospitaldiagnoseicd = dataElements.element("outhospitaldiagnoseicd").getText();
-							rj.setOuthospitaldiagnoseicd(outhospitaldiagnoseicd);
-							//出院情况
-							String outhospitinfo = dataElements.element("outhospitinfo").getText();
-							rj.setOuthospitinfo(outhospitinfo);
-							//离院方式
-							String outhospitaltype = dataElements.element("outhospitaltype").getText();
-							//rj.setOuthospitaltype(outhospitaltype);
-							//档案号
-							String filenumber = dataElements.element("filenumber").getText();
-							rj.setFilenumber(filenumber);
-							//出院中医诊断疾病名称
-							String outhospitalchinadoctordiagnosediseasname = dataElements.element("outhospitalchinadoctordiagnosediseasname").getText();
-							//出院中医诊断疾病名称编码
-							String outhospitalchinadoctordiagnosediseascode = dataElements.element("outhospitalchinadoctordiagnosediseascode").getText();
-							//出院中医诊断证型
-							String outhospitalchinadoctordiagnosecardname = dataElements.element("outhospitalchinadoctordiagnosecardname").getText();
-							//出院中医诊断证型编码
-							String outhospitalchinadoctordiagnosecardcode = dataElements.element("outhospitalchinadoctordiagnosecardcode").getText();
-							//主要手术名称
-							String mainoperationname = dataElements.element("mainoperationname").getText();
-							//主要手术编码
-							String mainoperationcode = dataElements.element("mainoperationcode").getText();
-							//出院其他诊断名1
-							String outhospitalotherdiagnosenameone = dataElements.element("outhospitalotherdiagnosenameone").getText();
-							rj.setOuthospitalotherdiagnosenameone(outhospitalotherdiagnosenameone);
-							String outhospitalotherdiagnosecodeone = dataElements.element("outhospitalotherdiagnosecodeone").getText();
-							rj.setOuthospitalotherdiagnosecodeone(outhospitalotherdiagnosecodeone);
-							String outhospitalotherdiagnosenametwo = dataElements.element("outhospitalotherdiagnosenametwo").getText();
-							rj.setOuthospitalotherdiagnosenametwo(outhospitalotherdiagnosenametwo);
-							String outhospitalotherdiagnosecodetwo = dataElements.element("outhospitalotherdiagnosecodetwo").getText();
-							rj.setOuthospitalotherdiagnosecodetwo(outhospitalotherdiagnosecodetwo);
-							String outhospitalotherdiagnosenamethree = dataElements.element("outhospitalotherdiagnosenamethree").getText();
-							rj.setOuthospitalotherdiagnosenamethree(outhospitalotherdiagnosenamethree);
-							String outhospitalotherdiagnosecodethree = dataElements.element("outhospitalotherdiagnosecodethree").getText();
-							rj.setOuthospitalotherdiagnosecodethree(outhospitalotherdiagnosecodethree);
-							String outhospitalotherdiagnosenamefour = dataElements.element("outhospitalotherdiagnosenamefour").getText();
-							rj.setOuthospitalotherdiagnosenamefour(outhospitalotherdiagnosenamefour);
-							String outhospitalotherdiagnosecodefour = dataElements.element("outhospitalotherdiagnosecodefour").getText();
-							rj.setOuthospitalotherdiagnosecodefour(outhospitalotherdiagnosecodefour);
-							String outhospitalotherdiagnosenamefive = dataElements.element("outhospitalotherdiagnosenamefive").getText();
-							rj.setOuthospitalotherdiagnosenamefive(outhospitalotherdiagnosenamefive);
-							String outhospitalotherdiagnosecodefive = dataElements.element("outhospitalotherdiagnosecodefive").getText();
-							rj.setOuthospitalotherdiagnosecodefive(outhospitalotherdiagnosecodefive);
-							//电子病历或病案首页或出院记录或出院小结
-//							String leavehospitalcontent  = dataElements.element("leavehospitalcontent").getText();
-							
-							//String leavehospitalid =inhospitalid+inhospitalcount;
-							String leavehospitalid =visitnum;
-							
-							//出院记录编号
-							rj.setOuthospitrecordid(leavehospitalid);
-							//获取电子病历
-							String emrXmlBf = dataElements.elementText("leavehospitalcontent");
-							String emrXml[] = emrXmlBf.split("\\|");
-							StringBuffer emrBf = new StringBuffer();
-							for(String a:emrXml){
-								emrBf.append("<p style='font-size:16px;margin:12px'>").append(a).append("</p>");
-							}
-							setRzzyyEmr(emrBf.toString(),leavehospitalid);
-							// 住院天数
-							String inhospitaldays = dataElements.elementText("inhospitaldays");
-							if (ValidateUtil.isNotNull(inhospitaldays)) {
-								rj.setInhospitaldays(Integer.parseInt(inhospitaldays));
-							}
-							
-							//就诊卡号
-							String patNo = dataElements.elementText("PatNo");
-							if(ValidateUtil.isNotNull(patNo)){
-								rj.setPatNo(patNo);
-							}
-							//登记号
-							String CardNo = dataElements.elementText("CardNo");
-							if(ValidateUtil.isNotNull(CardNo)){
-								rj.setCardNo(CardNo);
-							}
-						}
-						// 住院科室
-						String inhospitaldepartment = dataElements.elementText("inhospitaldepartment");
-						rj.setInhospitaldepartment(inhospitaldepartment);
-						// 住院科室ID
-						String inhospitaldepartmentid = dataElements.elementText("inhospitaldepartmentid");
-						rj.setInhospitaldepartmentid(inhospitaldepartmentid);
-						// 入院日期
-						String inhospitaldate = dataElements.elementText("inhospitaldate");
-						if (ValidateUtil.isNotNull(inhospitaldate)) {
-							Date inhospitaldateDate = DateUtil.parse(inhospitaldate, "yyyy-MM-dd hh:mm:ss");
-							Timestamp inhospitaldateTimesTamp = DateUtil.getSqlTimestamp(inhospitaldateDate);
-							rj.setInhospitaldate(inhospitaldateTimesTamp);
-						}
-						// 结算类型
-						 String closetype = dataElements.elementText("closetype");
-						 //rj.setClosetype(closetype);//正常
-						 
-						// 总花费
-						 String totalcost = dataElements.elementText("totalcost");
-						 if (ValidateUtil.isNotNull(totalcost)) {
-							 rj.setTotalcost(Double.valueOf(totalcost));
-						 }
-						// 主管医师
-						String maindoctorname = dataElements.elementText("maindoctorname");
-						rj.setMaindoctorname(maindoctorname);
-						// 主管医生id
-						String maindoctorid = dataElements.elementText("maindoctorid");
-						rj.setMaindoctorid(maindoctorid);
-						// 门诊医师
-						String doordoctorname = dataElements.elementText("doordoctorname");
-						rj.setDoordoctorname(doordoctorname);
-						// 门诊医师ID
-						String doordoctorid = dataElements.elementText("doordoctorid");
-						rj.setDoordoctorid(doordoctorid);
-						// 费用类型
-						String costtype = dataElements.elementText("costtype");
-						rj.setCosttype(costtype);//新农村合作医疗
-						
-						//住院号
-						rj.setInhospitalid(inhospitalid);
+				RzzyyJbgl rj = new RzzyyJbgl();
+				Map<String, Object> para = new HashMap<>();
+				para.put("inhospitalid", inhospitalid);
+				para.put("inhospitalcount", inhospitalcount);
+				RzzyyJbgl rzzyyJbgl = rzzyyJbglMapper.getRzzyyJbgl(para);
+				
+				if (rzzyyJbgl != null) {
+					rj = rzzyyJbgl;
+				}
+				// 姓名
+				String name = rst.getString("name");
+				// 性别√
+				String sex = rst.getString("sex");
+
+				// *住院科室ID
+				String inhospitaldepartmentid = rst.getString("inhospitaldepartmentid");
+				rj.setInhospitaldepartmentid(inhospitaldepartmentid);
+
+				// *住院科室
+				String inhospitaldepartment = rst.getString("inhospitaldepartment");
+				rj.setInhospitaldepartment(inhospitaldepartment);
+
+				if (status == 2) {
+					// 院后
+					// *出院科室ID
+					String outhospitaldepartmentid = rst.getString("outhospitaldepartmentid");
+					rj.setOuthospitaldepartmentid(outhospitaldepartmentid);
+					// *出院科室
+					String outhospitaldepartment = rst.getString("outhospitaldepartment");
+					rj.setOuthospitaldepartment(outhospitaldepartment);
+
+					// *首页出院日期(患者离院日期)√
+					String outhospitaldatehome = rst.getString("outhospitaldatehome");
+					if (ValidateUtil.isNotNull(outhospitaldatehome)) {
+						rj.setOuthospitaldatehome(getTimestamp(outhospitaldatehome));
+					}
+					// *结算出院日期√
+					String outhospitaldateclose = rst.getString("outhospitaldateclose");
+					if (ValidateUtil.isNotNull(outhospitaldateclose)) {
+						rj.setOuthospitaldateclose(getTimestamp(outhospitaldateclose));
+					}
+
+					// 出院诊断ICD码
+					String outhospitaldiagnoseicd = rst.getString("outhospitaldiagnoseicd");
+					rj.setOuthospitaldiagnoseicd(outhospitaldiagnoseicd);
+
+					// 出院情况
+					String outhospitinfo = rst.getString("outhospitinfo");
+					rj.setOuthospitinfo(outhospitinfo);
+
+					// 离院方式
+					String outhospitaltype = rst.getString("outhospitaltype");
+					if(ValidateUtil.isNotNull(outhospitaltype)&&!outhospitaltype.equals("null")){
+						//rj.setOuthospitaltype(outhospitaltype);
+					}
+
+					// 档案号
+					String filenumber = rst.getString("filenumber");
+					if(ValidateUtil.isNotNull(filenumber)&&!filenumber.equals("null")){
+						rj.setFilenumber(filenumber);
+					}
 					
-						rj.setVisitnum(visitnum);
-						/*缺少该字段*/
-						
-						// 住院次数
-						if (ValidateUtil.isNotNull(inhospitalcount)) {
-							rj.setInhospitalcount(Integer.parseInt(inhospitalcount));
-						}
-						// 住院标识
-						String inhospitaltag = dataElements.elementText("inhospitaltag");
-						//rj.setInhospitaltag(inhospitaltag);//门诊
-						
-						// 电子病历编号或病案首页编号或出院记录编号或出院小结编号
-						//String outhospitrecordid = dataElements.elementText("outhospitrecordid");//没这个字段
-						
-						// 有无药物过敏
-						String drugallergy = dataElements.elementText("drugallergy");
-						rj.setDrugallergy(drugallergy);//0
-						// 过敏药物
-						String allergydrug = dataElements.elementText("allergydrug");
-						rj.setAllergydrug(allergydrug);
-						// RH（阴阳性）
-						String rh = dataElements.elementText("rh");
-						rj.setRh(rh);
-						// 病理诊断名称
-						String pathologydiagnosename = dataElements.elementText("pathologydiagnosename");
-						rj.setPathologydiagnosename(pathologydiagnosename);
-						// 病理诊断码
-						String pathologydiagnosecode = dataElements.elementText("pathologydiagnosecode");
-						rj.setPathologydiagnosecode(pathologydiagnosecode);
-						// 入院途径
-						String inhospitalway = dataElements.elementText("inhospitalway");
-						rj.setInhospitalway(inhospitalway);
-						// 主要手术名称
-						String mainoperationname = dataElements.elementText("mainoperationname");
+					// 出院中医诊断疾病名称
+					String outhospitalchinadoctordiagnosediseasname = rst
+							.getString("outhospitalchinadoctordiagnosediseasname");
+					if(ValidateUtil.isNotNull(outhospitalchinadoctordiagnosediseasname)&&!outhospitalchinadoctordiagnosediseasname.equals("null")){
+						rj.setOuthospitalchinadoctordiagnosediseasname(outhospitalchinadoctordiagnosediseasname);
+					}
+
+					// 出院中医诊断疾病名称编码
+					String outhospitalchinadoctordiagnosediseascode = rst
+							.getString("outhospitalchinadoctordiagnosediseascode");
+					if(ValidateUtil.isNotNull(outhospitalchinadoctordiagnosediseascode)&&!outhospitalchinadoctordiagnosediseascode.equals("null")){
+						rj.setOuthospitalchinadoctordiagnosediseascode(outhospitalchinadoctordiagnosediseascode);
+					}
+
+					// 出院中医诊断证型
+					String outhospitalchinadoctordiagnosecardname = rst
+							.getString("outhospitalchinadoctordiagnosecardname");
+					if(ValidateUtil.isNotNull(outhospitalchinadoctordiagnosecardname)&&!outhospitalchinadoctordiagnosecardname.equals("null")){
+						rj.setOuthospitalchinadoctordiagnosecardname(outhospitalchinadoctordiagnosecardname);
+					}
+					// 出院中医诊断证型编码
+					String outhospitalchinadoctordiagnosecardcode = rst
+							.getString("outhospitalchinadoctordiagnosecardcode");
+					if(ValidateUtil.isNotNull(outhospitalchinadoctordiagnosecardcode)&&!outhospitalchinadoctordiagnosecardcode.equals("null")){
+						rj.setOuthospitalchinadoctordiagnosecardcode(outhospitalchinadoctordiagnosecardcode);
+					}
+
+					// 主要手术名称
+					String mainoperationname = rst.getString("mainoperationname");
+					if(ValidateUtil.isNotNull(mainoperationname)&&!mainoperationname.equals("null")){
 						rj.setMainoperationname(mainoperationname);
-						// 主要手术编码
-						String mainoperationcode = dataElements.elementText("mainoperationcode");
+					}
+					// 主要手术编码
+					String mainoperationcode = rst.getString("mainoperationcode");
+					if(ValidateUtil.isNotNull(mainoperationcode)&&!mainoperationcode.equals("null")){
 						rj.setMainoperationcode(mainoperationcode);
-						//其它手术名称1
-						String otheroperationnameone = dataElements.elementText("otheroperationnameone");
-						rj.setOtheroperationnameone(otheroperationnameone);
-						//其它手术编码1
-						String otheroperationcodeone = dataElements.elementText("otheroperationcodeone");
-						rj.setOtheroperationcodeone(otheroperationcodeone);
-						//其它手术名称2
-						String otheroperationnametwo = dataElements.elementText("otheroperationnametwo");
-						rj.setOtheroperationnametwo(otheroperationnametwo);
-						//其它手术编码2
-						String otheroperationcodetwo = dataElements.elementText("otheroperationcodetwo");
-						rj.setOtheroperationcodetwo(otheroperationcodetwo);
-						//其它手术名称3
-						String otheroperationnamethree = dataElements.elementText("otheroperationnamethree");
-						rj.setOtheroperationnamethree(otheroperationnamethree);
-						//其它手术编码3
-						String otheroperationcodethree = dataElements.elementText("otheroperationcodethree");
-						rj.setOtheroperationcodethree(otheroperationcodethree);
-						//其它手术名称4
-						String otheroperationnamefour = dataElements.elementText("otheroperationnamefour");
-						rj.setOtheroperationnamefour(otheroperationnamefour);
-						//其它手术编码4
-						String otheroperationcodefour = dataElements.elementText("otheroperationcodefour");
-						rj.setOtheroperationcodefour(otheroperationcodefour);
-						// 血型
-						String bloodtype = dataElements.elementText("bloodtype");
-						rj.setBloodtype(bloodtype);
-						// 自费金额
-						String owncost = dataElements.elementText("owncost");
-						if(ValidateUtil.isNotNull(owncost)){
-							rj.setOwncost(Double.valueOf(owncost));
-						}
-						// 医保金额
-						String healthinsurancecost = dataElements.elementText("healthinsurancecost");
-						if(ValidateUtil.isNotNull(healthinsurancecost)){
-							rj.setHealthinsurancecost(Double.valueOf(healthinsurancecost));
-						}
-						// 年龄单位
-						String ageunit = dataElements.elementText("ageunit");
-						rj.setAgeunit(ageunit);
-						// 年龄
-						String age = dataElements.elementText("age");
-						if(ValidateUtil.isNotNull(age)){
-							rj.setAge(Integer.parseInt(age));
-						}
-						// 名族
-						String nation = dataElements.elementText("nation");
-						rj.setNation(nation);
-						
-						rj.setName(name);
-						// 病人电话
-						String patientphone = dataElements.elementText("patientphone");
-						rj.setPatientphone(patientphone);
-						// 病人单位电话
-						String companyphone = dataElements.elementText("companyphone");
-						rj.setCompanyphone(companyphone);
-						// 联系人电话
-						String relationphone = dataElements.elementText("relationphone");
-						rj.setRelationphone(relationphone);
-						// 生日
-						String birthday = dataElements.elementText("birthday");
-						if (ValidateUtil.isNotNull(birthday)) {
-							Timestamp newbirthday = Timestamp.valueOf(birthday + " 00:00:00");
-							rj.setBirthday(newbirthday);
-						}
-						rj.setSex(sex);
-						// 婚姻状况
-						String marry = dataElements.elementText("marry");
-						rj.setMarry(marry);
-						// 职业
-						String profession = dataElements.elementText("profession");
-						rj.setProfession(profession);
-						// 现住址
-						String currentaddress = dataElements.elementText("currentaddress");
-						rj.setCurrentaddress(currentaddress);
-						// 联系住址
-						String teladdress = dataElements.elementText("teladdress");
-						rj.setTeladdress(teladdress);
-						// 工作单位
-						String company = dataElements.elementText("company");
-						rj.setCompany(company);
-						// 联系人名称
-						String telname = dataElements.elementText("telname");
-						rj.setTelname(telname);
-						// 与联系人关系
-						String relation = dataElements.elementText("relation");
-						rj.setRelation(relation);
-						// 教育程度
-						String education = dataElements.elementText("education");
-						rj.setEducation(education);
-						// 身份证号
-						String cardnum = dataElements.elementText("cardnum");
-						rj.setCardnum(cardnum);
-						// 主治医生的HIS唯一标识
-						String jobnum = dataElements.elementText("jobnum");
-						if (ValidateUtil.isNotNull(jobnum)) {
-							rj.setJobnum(jobnum);
-						}
-						rj.setIsStatus(status);
-						if (rzzyyJbgl != null) {
-							rj.setIspigeonhole(1);
-							rj.setUpdatetime(new Timestamp(System.currentTimeMillis()));
-							rzzyyJbglMapper.updateRzzyyJbgl(rj);
-						} else {
-							rzzyyJbglMapper.setRzzyyJbgl(rj);
+					}
+					// 出院其他诊断名1
+					String outhospitalotherdiagnosenameone = rst.getString("outhospitalotherdiagnosenameone");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosenameone)&&!outhospitalotherdiagnosenameone.equals("null")){
+						rj.setOuthospitalotherdiagnosenameone(outhospitalotherdiagnosenameone);
+					}
+
+					String outhospitalotherdiagnosecodeone = rst.getString("outhospitalotherdiagnosecodeone");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosecodeone)&&!outhospitalotherdiagnosecodeone.equals("null")){
+						rj.setOuthospitalotherdiagnosecodeone(outhospitalotherdiagnosecodeone);
+					}
+
+					String outhospitalotherdiagnosenametwo = rst.getString("outhospitalotherdiagnosenametwo");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosenametwo)&&!outhospitalotherdiagnosenametwo.equals("null")){
+						rj.setOuthospitalotherdiagnosenametwo(outhospitalotherdiagnosenametwo);
+					}
+
+					String outhospitalotherdiagnosecodetwo = rst.getString("outhospitalotherdiagnosecodetwo");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosecodetwo)&&!outhospitalotherdiagnosecodetwo.equals("null")){
+						rj.setOuthospitalotherdiagnosecodetwo(outhospitalotherdiagnosecodetwo);
+					}
+
+					String outhospitalotherdiagnosenamethree = rst.getString("outhospitalotherdiagnosenamethree");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosenamethree)&&!outhospitalotherdiagnosenamethree.equals("null")){
+						rj.setOuthospitalotherdiagnosenamethree(outhospitalotherdiagnosenamethree);
+					}
+
+					String outhospitalotherdiagnosecodethree = rst.getString("outhospitalotherdiagnosecodethree");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosecodethree)&&!outhospitalotherdiagnosecodethree.equals("null")){
+						rj.setOuthospitalotherdiagnosecodethree(outhospitalotherdiagnosecodethree);
+					}
+
+					String outhospitalotherdiagnosenamefour = rst.getString("outhospitalotherdiagnosenamefour");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosenamefour)&&!outhospitalotherdiagnosenamefour.equals("null")){
+						rj.setOuthospitalotherdiagnosenamefour(outhospitalotherdiagnosenamefour);
+					}
+
+					String outhospitalotherdiagnosecodefour = rst.getString("outhospitalotherdiagnosecodefour");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosecodefour)&&!outhospitalotherdiagnosecodefour.equals("null")){
+						rj.setOuthospitalotherdiagnosecodefour(outhospitalotherdiagnosecodefour);
+					}
+
+					String outhospitalotherdiagnosenamefive = rst.getString("outhospitalotherdiagnosenamefive");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosenamefive)&&!outhospitalotherdiagnosenamefive.equals("null")){
+						rj.setOuthospitalotherdiagnosenamefive(outhospitalotherdiagnosenamefive);
+					}
+
+					String outhospitalotherdiagnosecodefive = rst.getString("outhospitalotherdiagnosecodefive");
+					if(ValidateUtil.isNotNull(outhospitalotherdiagnosecodefive)&&!outhospitalotherdiagnosecodefive.equals("null")){
+						rj.setOuthospitalotherdiagnosecodefive(outhospitalotherdiagnosecodefive);
+					}
+
+					String leavehospitalid = inhospitalid + inhospitalcount;
+
+					// 出院记录编号
+					rj.setOuthospitrecordid(leavehospitalid);
+
+					// 自费金额√
+					String owncost = rst.getString("owncost");
+					if (ValidateUtil.isNotNull(owncost)) {
+						rj.setOwncost(Double.valueOf(owncost));
+					}
+					
+					String inhospitalcountstr =inhospitalcount;
+					if(Integer.valueOf(inhospitalcount)<10){
+						inhospitalcountstr = "0"+inhospitalcount;
+					}
+					
+					//人员随访分类
+					String nxzzbf = "http://"+ip+"/api/Supply/Health/FindOutHospitalFollowUp?pId=ZY"+inhospitalcountstr+inhospitalid;
+					try {	
+						nxzzbf = URLEncoder.encode(nxzzbf, "UTF-8");
+						HttpGet nxzz = new HttpGet(nxzzbf);
+						CloseableHttpResponse httpResponseGet = httpClient.execute(nxzz);
+						String nxzzstr = EntityUtils.toString(httpResponseGet.getEntity());
+						JSONObject nxzzJson = JSONObject.fromObject(nxzzstr);
+						String followUp = nxzzJson.getString("FollowUp");
+						if(ValidateUtil.isNotNull(followUp)&&!followUp.equals("null")){
+							rj.setExclusiveInterview(Integer.valueOf(followUp));
+						}else{
+							rj.setExclusiveInterview(null);
 						}
 					} catch (Exception e) {
+						System.out.println(nxzzbf);
+						e.printStackTrace();
+						rj.setExclusiveInterview(null);
+					}
+					//出院诊断
+					String cyzdbf = "http://"+ip+"/api/Supply/Health/FindOutHospitalContent?pId=ZY"+inhospitalcountstr+inhospitalid;
+					try {
+						cyzdbf = URLEncoder.encode(cyzdbf, "UTF-8");
+						HttpGet cyzd = new HttpGet(cyzdbf);
+						CloseableHttpResponse httpResponseGet2 = httpClient.execute(cyzd);
+						String cyzdstr = EntityUtils.toString(httpResponseGet2.getEntity());
+						JSONObject cyzdJson = JSONObject.fromObject(cyzdstr);
+						if(cyzdJson!=null){
+							StringBuffer emrBf = new StringBuffer();
+							emrBf.append("<p style='font-size:16px;margin:12px'>").append("出院诊断：").append(cyzdJson.getString("leavehospitaldiagnose")).append("</p>");
+							emrBf.append("<p style='font-size:16px;margin:12px'>").append("出院医嘱：").append(cyzdJson.getString("leavehospitalorder")).append("</p>");
+							emrBf.append("<p style='font-size:16px;margin:12px'>").append("住院小结：").append(cyzdJson.getString("leavehospitalcontent")).append("</p>");
+							setRzzyyEmr(emrBf.toString(),leavehospitalid);
+						}
+					} catch (Exception e) {
+						System.out.println(cyzdbf);
 						e.printStackTrace();
 					}
 				}
-			} catch (Exception e) {
+
+				// *总花费√
+				String totalcost = rst.getString("totalcost");
+				if (ValidateUtil.isNotNull(totalcost)) {
+					rj.setTotalcost(Double.valueOf(totalcost));
+				}
+
+				// *费用类型
+				String costtype = rst.getString("costtype");
+				if(ValidateUtil.isNotNull(costtype)&&!costtype.equals("null")){
+					rj.setCosttype(costtype);// 新农村合作医疗
+				}
+
+				// 住院标识
+				String inhospitaltag = rst.getString("inhospitaltag");
+				if(ValidateUtil.isNotNull(inhospitaltag)&&!inhospitaltag.equals("null")){
+					rj.setInhospitaltag(Integer.valueOf(inhospitaltag));
+				}
+
+				// 过敏药物
+				String allergydrug = rst.getString("allergydrug");
+				if (ValidateUtil.isNotNull(allergydrug)&&!allergydrug.equals("null")) {
+					rj.setAllergydrug(allergydrug);
+				}
+
+				// RH（阴阳性）
+				String rh = rst.getString("rh");
+				if (ValidateUtil.isNotNull(rh)&&!rh.equals("null")) {
+					rj.setRh(rh);
+				}
+
+				// 入院途径
+				String inhospitalway = rst.getString("inhospitalway");
+				if (ValidateUtil.isNotNull(inhospitalway)&&!inhospitalway.equals("null")) {
+					rj.setInhospitalway(inhospitalway);
+				}
 				
+				// 血型√
+				String bloodtype = rst.getString("bloodtype");
+				if (ValidateUtil.isNotNull(bloodtype)&&!bloodtype.equals("null")) {
+					rj.setBloodtype(bloodtype);
+				}
+
+				// 出院诊断/门诊诊断√
+				String outhospitaldiagnose = rst.getString("outhospitaldiagnose");
+				rj.setOuthospitaldiagnose(outhospitaldiagnose);
+
+				// *住院天数
+
+				String inhospitaldays = rst.getString("inhospitaldays");
+				if (ValidateUtil.isNotNull(inhospitaldays)) {
+					rj.setInhospitaldays(Integer.parseInt(inhospitaldays));
+				}
+
+				// *入院日期√
+				String inhospitaldate = rst.getString("inhospitaldate");
+				if (ValidateUtil.isNotNull(inhospitaldate)) {
+					rj.setInhospitaldate(getTimestamp(inhospitaldate));
+				}
+
+				// 结算类型
+				String closetype = rst.getString("closetype");
+				if(ValidateUtil.isNotNull(closetype)&&!closetype.equals("null")){
+					rj.setClosetype(Integer.valueOf(closetype));// 正常
+				}
+
+				// *主管医生id
+				String maindoctorid = rst.getString("maindoctorid");
+				if(ValidateUtil.isNotNull(maindoctorid)&&!maindoctorid.equals("null")){
+					rj.setMaindoctorid(maindoctorid);
+					rj.setJobnum(maindoctorid);
+				}
+
+				// *主管医师姓名
+				String maindoctorname = rst.getString("maindoctorname");
+				rj.setMaindoctorname(maindoctorname);
+
+				// *门诊医师ID√
+				String doordoctorid = rst.getString("doordoctorid");
+				if(ValidateUtil.isNotNull(doordoctorid)&&!doordoctorid.equals("null")){
+					rj.setDoordoctorid(doordoctorid);
+				}
+				// *门诊医师
+				String doordoctorname = rst.getString("doordoctorname");
+				if(ValidateUtil.isNotNull(doordoctorname)&&!doordoctorname.equals("null")){
+					rj.setDoordoctorname(doordoctorname);
+				}
+
+				// *住院号
+				rj.setInhospitalid(inhospitalid);
+
+				// *住院次数
+				if (ValidateUtil.isNotNull(inhospitalcount)) {
+					rj.setInhospitalcount(Integer.parseInt(inhospitalcount));
+				}
+
+				// 有无药物过敏
+				String drugallergy = rst.getString("drugallergy");
+				if(ValidateUtil.isNotNull(drugallergy)&&!drugallergy.equals("null")){
+					rj.setDrugallergy(drugallergy);
+				}
+
+				// *病理诊断名称
+				String pathologydiagnosename = rst.getString("pathologydiagnosename");
+				if (ValidateUtil.isNotNull(pathologydiagnosename)&&!pathologydiagnosename.equals("null")) {
+					rj.setPathologydiagnosename(pathologydiagnosename);
+				}
+
+				// *病理诊断码
+				String pathologydiagnosecode = rst.getString("pathologydiagnosecode");
+				if (ValidateUtil.isNotNull(pathologydiagnosecode)&&!pathologydiagnosecode.equals("null")) {
+					rj.setPathologydiagnosecode(pathologydiagnosecode);
+				}
+
+				// 其它手术编码1
+				String otheroperationnameone = rst.getString("otheroperationnameone");
+				if (ValidateUtil.isNotNull(otheroperationnameone)&&!otheroperationnameone.equals("null")) {
+					rj.setOtheroperationnameone(otheroperationnameone);
+				}
+
+				// 其它手术名称2
+				String otheroperationcodeone = rst.getString("otheroperationcodeone");
+				if (ValidateUtil.isNotNull(otheroperationcodeone)&&!otheroperationcodeone.equals("null")) {
+					rj.setOtheroperationcodeone(otheroperationcodeone);
+				}
+
+				// 其它手术编码2
+				String otheroperationnametwo = rst.getString("otheroperationnametwo");
+				if (ValidateUtil.isNotNull(otheroperationnametwo)&&!otheroperationnametwo.equals("null")) {
+					rj.setOtheroperationnametwo(otheroperationnametwo);
+				}
+
+				// 其它手术名称3
+				String otheroperationcodetwo = rst.getString("otheroperationcodetwo");
+				if (ValidateUtil.isNotNull(otheroperationcodetwo)&&!otheroperationcodetwo.equals("null")) {
+					rj.setOtheroperationcodetwo(otheroperationcodetwo);
+				}
+
+				String otheroperationnamethree = rst.getString("otheroperationnamethree");
+				if (ValidateUtil.isNotNull(otheroperationnamethree)&&!otheroperationnamethree.equals("null")) {
+					rj.setOtheroperationnamethree(otheroperationnamethree);
+				}
+
+				// 其它手术编码3
+				String otheroperationcodethree = rst.getString("otheroperationcodethree");
+				if (ValidateUtil.isNotNull(otheroperationcodethree)&&!otheroperationcodethree.equals("null")) {
+					rj.setOtheroperationcodethree(otheroperationcodethree);
+				}
+
+				// 其它手术名称4
+				String otheroperationnamefour = rst.getString("otheroperationnamefour");
+				if (ValidateUtil.isNotNull(otheroperationnamefour)&&!otheroperationnamefour.equals("null")) {
+					rj.setOtheroperationnamefour(otheroperationnamefour);
+				}
+
+				// 其它手术编码4
+				String otheroperationcodefour = rst.getString("otheroperationcodefour");
+				if (ValidateUtil.isNotNull(otheroperationcodefour)&&!otheroperationcodefour.equals("null")) {
+					rj.setOtheroperationcodefour(otheroperationcodefour);
+				}
+
+				// 医保金额
+				String healthinsurancecost = rst.getString("healthinsurancecost");
+				if (ValidateUtil.isNotNull(healthinsurancecost)) {
+					rj.setHealthinsurancecost(Double.valueOf(healthinsurancecost));
+				}
+
+				// *年龄单位
+				String ageunit = rst.getString("ageunit");
+				if (ValidateUtil.isNotNull(healthinsurancecost)&&!ageunit.equals("null")) {
+					rj.setAgeunit(ageunit);
+				} else {
+					rj.setAgeunit("岁");
+				}
+
+				// *生日√
+				Timestamp newbirthday = null;
+				String birthday = rst.getString("birthday");
+				if (ValidateUtil.isNotNull(birthday)) {
+					SimpleDateFormat sf1 = new SimpleDateFormat("yyyyMMdd");
+					DateFormat sf2 = new SimpleDateFormat("yyyy-MM-dd");
+					birthday = sf2.format(sf1.parse(birthday));
+					birthday = birthday + " 00:00:00";
+					newbirthday = Timestamp.valueOf(birthday);
+				}
+
+				// *身份证号√
+				String cardnum = rst.getString("cardnum");
+
+				// *民族√
+				String nation = rst.getString("nation");
+				if (ValidateUtil.isNotNull(nation)) {
+					rj.setNation(nation);
+				}
+
+				// *姓名√
+				rj.setName(name);
+				if(ValidateUtil.isNotNull(cardnum)&&!cardnum.equals("null")){
+					rj.setCardnum(cardnum);// 设置身份证号码
+				}
+				rj.setBirthday(newbirthday);// 设置生日
+
+				// *病人电话√
+				String patientphone = rst.getString("patientphone");
+				rj.setPatientphone(patientphone);
+				
+				// *病人单位电话√
+				String companyphone = rst.getString("companyphone");
+				if(ValidateUtil.isNotNull(companyphone)&&!companyphone.equals("null")){
+					rj.setCompanyphone(companyphone);
+				}
+				// *联系人电话√
+				String relationphone = rst.getString("relationphone");
+				rj.setRelationphone(relationphone);
+
+				// *年龄
+				rj.setAge(getAgeByCardNum(cardnum, newbirthday));
+
+				// *性别
+				rj.setSex(sex);
+				// 婚姻状况√
+				String marry = rst.getString("marry");
+				if (ValidateUtil.isNotNull(marry)) {
+					rj.setMarry(marry);
+				}
+				// 职业√
+				String profession = rst.getString("profession");
+				rj.setProfession(profession);
+				// 现住址√
+				String currentaddress = rst.getString("currentaddress");
+				if(ValidateUtil.isNotNull(currentaddress)&&!currentaddress.equals("null")){
+					rj.setCurrentaddress(currentaddress);
+				}
+				// 联系住址√
+				String teladdress = rst.getString("teladdress");
+				if(ValidateUtil.isNotNull(teladdress)&&!teladdress.equals("null")){
+					rj.setTeladdress(teladdress);
+				}
+				// 工作单位√
+				String company = rst.getString("company");
+				if (ValidateUtil.isNotNull(company)&&!company.equals("null")) {
+					rj.setCompany(company);
+				}
+				// 联系人名称
+				String telname = rst.getString("telname");
+				rj.setTelname(telname);
+
+				// 与联系人关系
+				String relation = rst.getString("relation");
+				rj.setRelation(relation);
+
+				// 教育程度
+				String education = rst.getString("education");
+				if(ValidateUtil.isNotNull(education)&&!education.equals("null")){
+					rj.setEducation(education);
+				}
+
+				// *主治医生的HIS唯一标识
+//				String jobnum = rst.getString("jobnum");
+//				if (ValidateUtil.isNotNull(jobnum)&&!jobnum.equals("null")) {
+//					rj.setJobnum(jobnum);
+//				}
+				
+				//护士姓名
+				String nurseName = rst.getString("nurseName");
+				if(ValidateUtil.isNotNull(nurseName)&&!nurseName.equals("null")){
+					rj.setNurseName(nurseName);
+				}
+				
+				//护士工号
+				String nurseId = rst.getString("nurseId");
+				if(ValidateUtil.isNotNull(nurseId)&&!nurseId.equals("null")){
+					rj.setNurseId(nurseId);
+				}
+
+				rj.setIsStatus(status);
+				if (rzzyyJbgl != null) {
+					rj.setIspigeonhole(1);
+					rj.setUpdatetime(new Timestamp(System.currentTimeMillis()));
+					rzzyyJbglMapper.updateRzzyyJbgl(rj);
+				} else {
+					rzzyyJbglMapper.setRzzyyJbgl(rj);
+				}
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
-	private Object callinginterface(String method,StringBuffer sb) {
-		JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
-		Client client = dcf.createClient("http://10.9.100.188/csp/dhcens/DHC.HMSS.BS.HisService.cls?wsdl");
-		HTTPConduit conduit = (HTTPConduit) client.getConduit();
-		HTTPClientPolicy policy = new HTTPClientPolicy();
-		long timeout = 10 * 60 * 1000;
-		policy.setConnectionTimeout(timeout);
-		policy.setReceiveTimeout(timeout);
-		conduit.setClient(policy);
-		Object[] objects = new Object[0];
+	private JSONArray callinginterface(String startTime,String endTime) {
+		String url = "http://"+ip+"/api/Supply/Health/FindOutHospitalPatient?sdt="+startTime+"&edt="+endTime;
+		HttpGet test = new HttpGet(url);
 		try {
-			//System.out.println(sb.toString());
-			objects = client.invoke(method, sb.toString());
-			client.close();
-			//System.out.println(objects[0]);
-			return objects[0];
+			CloseableHttpResponse httpResponseGet = httpClient.execute(test);
+			String str = EntityUtils.toString(httpResponseGet.getEntity());
+			JSONArray a = JSONArray.fromObject(str);
+			return a;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -509,15 +690,16 @@ public class GuangXiOldHisHandler {
 	 */
 	private void setErrorMessageStatus(RzzyyJbgl rj){
 		Map<String,Object> para= new HashMap<>();
-		//para.put("thirdpartyhisid", rj.getId());
-		//wangsongyuan 广西二附院唯一标识 20191029
-		para.put("zy_code", rj.getVisitnum());
+		//wangsongyuan 孝感唯一标识 20191029
+		para.put("inhospitalid", rj.getInhospitalid());
+		para.put("inhospitalcount", rj.getInhospitalcount());
 		HisError hisError = hisErrorOldMapper.getHisError(para);
 		if(hisError != null){
 			hisError.setStatus(1);
 			hisError.setIsmakeup(1);
 			hisError.setUpdatetime(new Timestamp(System.currentTimeMillis()));
 			hisError.setPatientid_his(rj.getPatientid_his());
+			hisError.setInhospitalid(rj.getInhospitalid());
 			hisError.setInhospitalcount(rj.getInhospitalcount());
 			hisErrorOldMapper.updateHisError(hisError);
 		}
@@ -533,9 +715,9 @@ public class GuangXiOldHisHandler {
 		try {
 			HisError hiserr = new HisError();
 			Map<String,Object> para= new HashMap<>();
-			//para.put("thirdpartyhisid", rj.getId());
-			//wangsongyuan 广西二附院唯一标识 20191029
-			para.put("zy_code", rj.getVisitnum());
+			//wangsongyuan 孝感唯一标识 20191029
+			para.put("inhospitalid", rj.getInhospitalid());
+			para.put("inhospitalcount", rj.getInhospitalcount());
 			HisError hisError = hisErrorOldMapper.getHisError(para);
 			if(hisError != null){
 				hiserr = hisError;
@@ -545,6 +727,7 @@ public class GuangXiOldHisHandler {
 			hiserr.setMaindoctorid(rj.getMaindoctorid());
 			hiserr.setJobnum(rj.getJobnum());
 			hiserr.setPatientid_his(rj.getPatientid_his());
+			hiserr.setInhospitalid(rj.getInhospitalid());
 			hiserr.setInhospitalcount(rj.getInhospitalcount());
 			hiserr.setZy_code(rj.getVisitnum());
 			hiserr.setStatus(0);
@@ -1025,6 +1208,14 @@ public class GuangXiOldHisHandler {
 			outh.setVisitnum(rj.getVisitnum());//就诊号
 		}
 		
+		//孝感新增字段
+		if(ValidateUtil.isNotNull(rj.getNurseId())){
+			outh.setNurseId(rj.getNurseId());//护士工号
+		}
+		if(ValidateUtil.isNotNull(rj.getNurseName())){
+			outh.setNurseName(rj.getNurseName());//护士姓名
+		}
+		
 		if(rj.getIsStatus()==1&&outh.getHealthrecordstate()!=2){
 			//outh.setHealthrecordstate(1);
 			outh.setHealthrecordstate(2);//临时改成2
@@ -1072,6 +1263,22 @@ public class GuangXiOldHisHandler {
 			}else{
 				rzzyyEmrOldMapper.setEMR(re);
 			}
+		}
+	}
+	
+	/**
+	 * 处理带T时间
+	 * @param string
+	 * @param sf
+	 * @return
+	 * @throws ParseException
+	 */
+	private static Timestamp getTimestamp(String time) throws ParseException{
+		SimpleDateFormat sf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+		if (time.equals("")) {
+			return null;
+		} else {
+			return new Timestamp(sf.parse(time).getTime());
 		}
 	}
 }

@@ -5,14 +5,6 @@ package cn.sqwsy.health365interface.dao.entity;
 
 import java.sql.Timestamp;
 
-/**
- * @title : his疾病管理视图出院信息数据实体类
- * @description : 
- * @version 1.0
- * @email : liuchang_liu_chang@163.com
- * @author : liuchang
- * @createtime : 2015年8月2日 下午8:26:27
- */
 public class RzzyyJbgl extends PO {
 	private Integer id;//主键
 	private String department;//科室名称
@@ -110,11 +102,16 @@ public class RzzyyJbgl extends PO {
 	private Timestamp updatetime = new Timestamp(System.currentTimeMillis());//用户信息更新时间
 	//新加字段
 	private Integer isStatus = 1;//1院中 2院后
-	private Integer exclusiveInterview=1;//章丘新增随访类别：0科室随访，1疾病与健康管理中心随访 默认疾病与健康管理中心随访
+	//章丘新增随访类别：0科室随访，1疾病与健康管理中心随访 默认疾病与健康管理中心随访
+	//孝感随访类别：0客服随访，1专科随访，2勿访
+	private Integer exclusiveInterview=1;
 	private Integer chronicDiseaseId;//病种表ID
 	//广西医科大学第二附属医院新增字段
 	private String PatNo;//就诊卡号
 	private String CardNo;//患者登记号
+	//孝感新增字段
+	private String nurseId;//护士工号
+	private String nurseName;//护士姓名
 	
 	/**
 	 * @return the id
@@ -1106,5 +1103,17 @@ public class RzzyyJbgl extends PO {
 	}
 	public void setCardNo(String cardNo) {
 		CardNo = cardNo;
+	}
+	public String getNurseId() {
+		return nurseId;
+	}
+	public void setNurseId(String nurseId) {
+		this.nurseId = nurseId;
+	}
+	public String getNurseName() {
+		return nurseName;
+	}
+	public void setNurseName(String nurseName) {
+		this.nurseName = nurseName;
 	}
 }

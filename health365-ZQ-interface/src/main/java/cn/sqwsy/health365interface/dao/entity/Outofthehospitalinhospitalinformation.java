@@ -95,9 +95,11 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	private Timestamp createtime = new Timestamp(System.currentTimeMillis());//用户创建时间
 	private Timestamp updatetime = new Timestamp(System.currentTimeMillis());//用户信息更新时间
 	
-	private Integer exclusiveInterview;//章丘新增随访类别：0科室随访，1疾病与健康管理中心随访
+	//章丘新增随访类别：0科室随访，1疾病与健康管理中心随访
+	//孝感随访类别0，专科随访，1，客服随访
+	private Integer exclusiveInterview;
 	private Integer chronicDiseaseId;//病种表ID
-	///章丘------------栗
+	///章丘新增字段
 	private Integer zcxzstate=1;//1：未下转2.已下转
 	private Integer hospitaldictionaryid;//医院字典表ID 转出后才会设置
 	private String hospitalcoding;//转出的医院编码
@@ -106,6 +108,9 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	private String visitnum;//就诊号
 	private String PatNo;//患者登记号
 	private String CardNo;//就诊卡号
+	//孝感新增字段
+	private String nurseId;//护士工号
+	private String nurseName;//护士姓名
 	public String getOuthospitaldiagnoseall() {
 		return outhospitaldiagnoseall;
 	}
@@ -616,5 +621,17 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	}
 	public void setCardNo(String cardNo) {
 		CardNo = cardNo;
+	}
+	public String getNurseId() {
+		return nurseId;
+	}
+	public void setNurseId(String nurseId) {
+		this.nurseId = nurseId;
+	}
+	public String getNurseName() {
+		return nurseName;
+	}
+	public void setNurseName(String nurseName) {
+		this.nurseName = nurseName;
 	}
 }

@@ -16,6 +16,9 @@ public class OutOldSqlFactory {
 	        if(para.get("patientid_his")!=null&&!para.get("patientid_his").equals("")){
 	        	sql.WHERE("patientid_his='"+para.get("patientid_his")+"'");
 	        }
+	        if(para.get("inhospitalid")!=null&&!para.get("inhospitalid").equals("")){
+	        	sql.WHERE("inhospitalid='"+para.get("inhospitalid")+"'");
+	        }
 	        if(para.get("inhospitalcount")!=null&&!para.get("inhospitalcount").equals("")){
 	        	sql.WHERE("inhospitalcount='"+para.get("inhospitalcount")+"'");
 	        }
@@ -307,6 +310,13 @@ public class OutOldSqlFactory {
 	    	if(ValidateUtil.isNotNull(out.getCardNo())){
 	    		sql.VALUES("CardNo", "#{CardNo}");
 	    	}
+	    	//孝感新增字段
+	    	if(ValidateUtil.isNotNull(out.getNurseId())){
+	    		sql.VALUES("nurseId", "#{nurseId}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getNurseName())){
+	    		sql.VALUES("nurseName", "#{nurseName}");
+	    	}
 	        return sql.toString();
 	}
 	
@@ -578,6 +588,13 @@ public class OutOldSqlFactory {
 	    	}
 	    	if(ValidateUtil.isNotNull(out.getCardNo())){
 	    		sql.SET("CardNo=#{CardNo}");
+	    	}
+	    	//孝感新增字段
+	    	if(ValidateUtil.isNotNull(out.getNurseId())){
+	    		sql.SET("nurseId=#{nurseId}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getNurseName())){
+	    		sql.SET("nurseName=#{nurseName}");
 	    	}
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();
