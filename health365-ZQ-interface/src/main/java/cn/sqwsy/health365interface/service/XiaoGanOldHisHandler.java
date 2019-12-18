@@ -1,5 +1,8 @@
 package cn.sqwsy.health365interface.service;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -54,7 +57,7 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 @Component
 public class XiaoGanOldHisHandler {
-	private static final int AGE = 9;
+	private static final int AGE = 12;
 	private static String ip = "172.16.120.98:801";
 	@Autowired
 	private RzzyyJbglOldMapper rzzyyJbglMapper;
@@ -85,7 +88,7 @@ public class XiaoGanOldHisHandler {
 
 	
 	private CloseableHttpClient httpClient;
-	@Scheduled(fixedDelay = 6000)
+	@Scheduled(fixedDelay = 1800000)
 	public void fixedRateJob() {
 		CookieStore cookieStore = new BasicCookieStore();
 		httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
@@ -101,7 +104,7 @@ public class XiaoGanOldHisHandler {
 			}
 			httpResponse = httpClient.execute(httpPost);
 			if (httpResponse.getStatusLine().getStatusCode() == 200) {
-				for (int i = 0; i <= 1; i++) {
+				for (int i = -1; i <= 5; i++) {
 					Calendar outStartCal = Calendar.getInstance(); 
 					outStartCal.add(Calendar.DAY_OF_MONTH,i-1);
 					outStartCal.set(Calendar.HOUR_OF_DAY, 0); 
@@ -672,15 +675,37 @@ public class XiaoGanOldHisHandler {
 	private JSONArray callinginterface(String startTime,String endTime) {
 		String url = "http://"+ip+"/api/Supply/Health/FindOutHospitalPatient?sdt="+startTime+"&edt="+endTime;
 		HttpGet test = new HttpGet(url);
+		JSONArray a =null;
+		String str = null;
 		try {
 			CloseableHttpResponse httpResponseGet = httpClient.execute(test);
-			String str = EntityUtils.toString(httpResponseGet.getEntity());
-			JSONArray a = JSONArray.fromObject(str);
-			return a;
+			str = EntityUtils.toString(httpResponseGet.getEntity());
+			a = JSONArray.fromObject(str);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return null;
+		try{
+			//接口日志start
+			OutputStreamWriter   pw = null;
+			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");//设置日期格式
+			SimpleDateFormat df2 = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss");//设置日期格式
+			String date = df.format(new Date());// new Date()为获取当前系统时间
+			String time = df2.format(new Date());
+			String fileName = "D:/Dao/logs/"+date +"/"+time+".json";
+			File file = new File(fileName);  
+			File fileParent = file.getParentFile();  
+			if(!fileParent.exists()){  
+			    fileParent.mkdirs();  
+			}  
+			pw = new OutputStreamWriter(
+					new FileOutputStream(fileName), "UTF-8");
+			pw.write(str);
+			pw.close();//关闭流
+			//接口日志end
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		return a;
 	}
 	
 	/**
