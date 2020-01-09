@@ -358,10 +358,17 @@ public class XiaoGanOldHisHandler {
 						}else{
 							rj.setExclusiveInterview(null);
 						}
+						String bed = nxzzJson.getString("Bed");
+						if(ValidateUtil.isNotNull(bed)&&!bed.equals("null")){
+							rj.setBedNum(bed);
+						}else{
+							rj.setBedNum(null);
+						}
 					} catch (Exception e) {
 						System.out.println(nxzzbf);
 						e.printStackTrace();
 						rj.setExclusiveInterview(null);
+						rj.setBedNum(null);
 					}
 					//出院诊断
 					String cyzdbf = "http://"+ip+"/api/Supply/Health/FindOutHospitalContent?pId=ZY"+inhospitalcountstr+inhospitalid;
@@ -1239,6 +1246,9 @@ public class XiaoGanOldHisHandler {
 		}
 		if(ValidateUtil.isNotNull(rj.getNurseName())){
 			outh.setNurseName(rj.getNurseName());//护士姓名
+		}
+		if(ValidateUtil.isNotNull(rj.getBedNum())){
+			outh.setBedNum(rj.getBedNum());//床号
 		}
 		
 		if(rj.getIsStatus()==1&&outh.getHealthrecordstate()!=2){

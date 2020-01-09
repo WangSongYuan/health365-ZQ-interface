@@ -76,9 +76,9 @@ public class GuangXiOldHisHandler {
 	@Autowired
 	private RzzyyEmrOldMapper rzzyyEmrOldMapper;
 
-	@Scheduled(fixedDelay = 6000)
+	@Scheduled(fixedDelay = 1200000)
 	public void fixedRateJob() {
-		for (int i = 0; i <= 1; i++) {
+		for (int i = 0; i <= 6; i++) {
 			Calendar outStartCal = Calendar.getInstance(); 
 			outStartCal.add(Calendar.DAY_OF_MONTH,-i);
 			outStartCal.set(Calendar.HOUR_OF_DAY, 0); 
@@ -98,7 +98,12 @@ public class GuangXiOldHisHandler {
 			
 			StringBuffer outnXmlbf = new StringBuffer("<request><starttime>");
 			outnXmlbf.append(outDateHomeStart).append("</starttime><endtime>").append(dateHomeEnd).append("</endtime><ctloc></ctloc></request>");
-			toXml(callinginterface("getOuthospitalList",outnXmlbf), 2);
+			String object =  callinginterface("getOuthospitalList",outnXmlbf);
+			if(ValidateUtil.isNotNull(object)){
+				toXml(object,2);
+			}else{
+				continue;
+			}
 		}
 		
 		/***
@@ -137,14 +142,12 @@ public class GuangXiOldHisHandler {
 		}
 	}
 	
-	private void toXml(Object object, Integer status){
+	private void toXml(String object, Integer status){
 		SAXReader reader = new SAXReader();
 		Document document = null;
 		try {
-			document = reader.read(new StringReader(object.toString()), "utf-8");
+			document = reader.read(new StringReader(object), "utf-8");
 		} catch (Exception e) {
-			//e.printStackTrace();
-			System.out.println(object.toString());
 			return;
 		}
 		
@@ -480,7 +483,7 @@ public class GuangXiOldHisHandler {
 		}
 	}
 	
-	private Object callinginterface(String method,StringBuffer sb) {
+	private String callinginterface(String method,StringBuffer sb) {
 		JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
 		Client client = dcf.createClient("http://10.9.100.188/csp/dhcens/DHC.HMSS.BS.HisService.cls?wsdl");
 		HTTPConduit conduit = (HTTPConduit) client.getConduit();
@@ -494,12 +497,12 @@ public class GuangXiOldHisHandler {
 			//System.out.println(sb.toString());
 			objects = client.invoke(method, sb.toString());
 			client.close();
-			//System.out.println(objects[0]);
-			return objects[0];
+			System.out.println(objects[0].toString().substring(0, 200));
+			return objects[0].toString();
 		} catch (Exception e) {
 			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 	
 	/**

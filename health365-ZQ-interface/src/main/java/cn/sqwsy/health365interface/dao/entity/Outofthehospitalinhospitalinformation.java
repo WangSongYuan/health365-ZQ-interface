@@ -111,6 +111,7 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	//孝感新增字段
 	private String nurseId;//护士工号
 	private String nurseName;//护士姓名
+	private String bedNum;//床号
 	public String getOuthospitaldiagnoseall() {
 		return outhospitaldiagnoseall;
 	}
@@ -633,5 +634,11 @@ public class Outofthehospitalinhospitalinformation extends PO{
 	}
 	public void setNurseName(String nurseName) {
 		this.nurseName = nurseName;
+	}
+	public String getBedNum() {
+		return bedNum;
+	}
+	public void setBedNum(String bedNum) {
+		this.bedNum = bedNum;
 	}
 }

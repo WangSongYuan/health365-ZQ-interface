@@ -317,6 +317,9 @@ public class OutOldSqlFactory {
 	    	if(ValidateUtil.isNotNull(out.getNurseName())){
 	    		sql.VALUES("nurseName", "#{nurseName}");
 	    	}
+	    	if(ValidateUtil.isNotNull(out.getBedNum())){
+	    		sql.VALUES("bedNum", "#{bedNum}");
+	    	}
 	        return sql.toString();
 	}
 	
@@ -595,6 +598,9 @@ public class OutOldSqlFactory {
 	    	}
 	    	if(ValidateUtil.isNotNull(out.getNurseName())){
 	    		sql.SET("nurseName=#{nurseName}");
+	    	}
+	    	if(ValidateUtil.isNotNull(out.getBedNum())){
+	    		sql.SET("bedNum=#{bedNum}");
 	    	}
 	    	sql.WHERE("id=#{id}");
 		return sql.toString();

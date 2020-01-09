@@ -320,7 +320,10 @@ public class RzzyyJbglSqlFactory {
 	    	
 	    	/*private String visitnum;//就诊号
 	    	private String bednum;//床号
-	    	 */	    	
+	    	 */	 
+	    	if(inhospital.getBedNum()!=null){
+	    		sql.VALUES("bedNum", "#{bedNum}");
+	    	}
 	    	
 	    	//用户信息创建时间
 	    	if(inhospital.getCreatetime()!=null){
@@ -646,7 +649,11 @@ public class RzzyyJbglSqlFactory {
 		    	
 		    	/*private String visitnum;//就诊号
 		    	private String bednum;//床号
+		    	
 		    	 */	    	
+		    	if(inhospital.getBedNum()!=null){
+		    		sql.SET("bedNum = #{bedNum}");
+		    	}
 		    	
 		    	//用户信息更新时间
 		    	if(inhospital.getUpdatetime()!=null){

@@ -97,7 +97,6 @@ public class RzzyyJbgl extends PO {
 	private String jobnum;//主治医师工号
 	private String patientid_his;//医院HIS系统对应的患者ID
 	private String visitnum;//就诊号
-	private String bednum;//床号
 	private Timestamp createtime = new Timestamp(System.currentTimeMillis());//用户创建时间
 	private Timestamp updatetime = new Timestamp(System.currentTimeMillis());//用户信息更新时间
 	//新加字段
@@ -112,7 +111,7 @@ public class RzzyyJbgl extends PO {
 	//孝感新增字段
 	private String nurseId;//护士工号
 	private String nurseName;//护士姓名
-	
+	private String bedNum;//床号
 	/**
 	 * @return the id
 	 */
@@ -1074,12 +1073,6 @@ public class RzzyyJbgl extends PO {
 	public void setVisitnum(String visitnum) {
 		this.visitnum = visitnum;
 	}
-	public String getBednum() {
-		return bednum;
-	}
-	public void setBednum(String bednum) {
-		this.bednum = bednum;
-	}
 	public Integer getExclusiveInterview() {
 		return exclusiveInterview;
 	}
@@ -1115,5 +1108,11 @@ public class RzzyyJbgl extends PO {
 	}
 	public void setNurseName(String nurseName) {
 		this.nurseName = nurseName;
+	}
+	public String getBedNum() {
+		return bedNum;
+	}
+	public void setBedNum(String bedNum) {
+		this.bedNum = bedNum;
 	}
 }
