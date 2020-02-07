@@ -759,15 +759,15 @@ public class GuangXiOldHisHandler {
 			//新科室id
 			Integer departmentId = department.getId();
 			//根据用户id获取用户和科室的中间表
-			DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(ui.getId());
+			Map<String,Object> parms = new HashMap<>(3);
+			parms.put("userinfoid", ui.getId());
+			parms.put("departmentid", departmentId);
+			DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(parms);
 			if(dmrinfo==null){
 				DepartmentMidrUserInfo newdmrinfo = new DepartmentMidrUserInfo();
 				newdmrinfo.setUserinfoid(ui.getId());
 				newdmrinfo.setDepartmentid(department.getId());
 				departmentMidrUserInfoOldMapper.setDepartmentMidrUserInfo(newdmrinfo);
-			}else{
-				dmrinfo.setDepartmentid(departmentId);
-				departmentMidrUserInfoOldMapper.updateDepartmentMidrUserInfo(dmrinfo);
 			}
 		}
 	}

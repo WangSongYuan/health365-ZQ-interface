@@ -292,7 +292,10 @@ public class ZhangQiuOldMzHandler {
 				if (oldDoctor != null) {//如果医生存在
 					doctor = oldDoctor;
 					//根据用户id获取用户和科室的中间表
-					DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(doctor.getId());
+					Map<String,Object> parms = new HashMap<>(3);
+					parms.put("userinfoid", doctor.getId());
+					parms.put("departmentid", d.getId());
+					DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(parms);
 					if(dmrinfo==null){//科室权限不存在就创建
 						DepartmentMidrUserInfo newdmrinfo = new DepartmentMidrUserInfo();
 						newdmrinfo.setUserinfoid(doctor.getId());
@@ -582,7 +585,10 @@ public class ZhangQiuOldMzHandler {
 			//新科室id
 			Integer departmentId = department.getId();
 			//根据用户id获取用户和科室的中间表
-			DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(ui.getId());
+			Map<String,Object> parms = new HashMap<>(3);
+			parms.put("userinfoid", ui.getId());
+			parms.put("departmentid", department.getId());
+			DepartmentMidrUserInfo dmrinfo = departmentMidrUserInfoOldMapper.getDepartmentMidrUserInfoByUserId(parms);
 			if(dmrinfo==null){
 				DepartmentMidrUserInfo newdmrinfo = new DepartmentMidrUserInfo();
 				newdmrinfo.setUserinfoid(ui.getId());

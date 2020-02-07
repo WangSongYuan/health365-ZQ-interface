@@ -73,7 +73,7 @@ public class JiXianOldHisHandler {
 	@Autowired
 	private RzzyyEmrOldMapper rzzyyEmrOldMapper;
 
-	@Scheduled(fixedDelay = 600000)
+	@Scheduled(fixedDelay = 1800000)
 	public void fixedRateJob() {
 		Connection conn = getHisConn();
 		PreparedStatement pstmt = null;
@@ -89,7 +89,7 @@ public class JiXianOldHisHandler {
 			}
 			
 			//院后数据
-			for (int i = 0; i <= 1; i++) {
+			for (int i = 0; i <= 2; i++) {
 				Calendar outStartCal = Calendar.getInstance(); 
 				outStartCal.add(Calendar.DAY_OF_MONTH,-i);
 				outStartCal.set(Calendar.HOUR_OF_DAY, 0); 
@@ -99,7 +99,7 @@ public class JiXianOldHisHandler {
 				String starttime = DateUtil.format(outSstartTime, "yyyy-MM-dd");
 
 				Calendar endCal = Calendar.getInstance(); 
-				endCal.add(Calendar.DAY_OF_MONTH,+1);
+				endCal.add(Calendar.DAY_OF_MONTH,-i+1);
 				endCal.set(Calendar.HOUR_OF_DAY, 23); 
 				endCal.set(Calendar.SECOND, 59); 
 				endCal.set(Calendar.MINUTE, 59); 
@@ -179,7 +179,7 @@ public class JiXianOldHisHandler {
 			try {
 				// 住院号√
 				String inhospitalid = rst.getString("inhospitalid");
-				// 解决集贤住院号xxxxxx的问题
+				//解决集贤住院号xxxxxx的问题
 				if(!isNum(inhospitalid)){
 					continue;
 				}
@@ -401,9 +401,9 @@ public class JiXianOldHisHandler {
 					rj.setNation(nation);
 				}
 
-				rj.setCardnum(cardnum);// 设置身份证号码
 				// *姓名√
 				rj.setName(name);
+				rj.setCardnum(cardnum);// 设置身份证号码
 				rj.setBirthday(newbirthday);// 设置生日
 
 				// *病人电话√
@@ -634,14 +634,27 @@ public class JiXianOldHisHandler {
 	 * @param rj
 	 */
 	private void setDepartment(RzzyyJbgl rj){
+		   String hisId=null;
 			//院后
-			Department dt = departMentOldMapper.getDepartmentByHisId(rj.getOuthospitaldepartmentid());
+			if(rj.getIsStatus()==1){
+				hisId = rj.getInhospitaldepartmentid();
+			}else if(rj.getIsStatus()==2){
+				hisId = rj.getOuthospitaldepartmentid();
+			}
+			Department dt = departMentOldMapper.getDepartmentByHisId(hisId);
 			if(dt==null){
 				Department d = new Department();//科室
-				if(ValidateUtil.isNotNull(rj.getOuthospitaldepartmentid())){
-					d.setThirdpartyhisid(rj.getOuthospitaldepartmentid());
+				if(rj.getIsStatus()==1){
+					if(ValidateUtil.isNotNull(rj.getInhospitaldepartmentid())){
+						d.setThirdpartyhisid(rj.getInhospitaldepartmentid());
+						d.setName(rj.getInhospitaldepartment());//科室名称
+					}
+				}else if(rj.getIsStatus()==2){
+					if(ValidateUtil.isNotNull(rj.getOuthospitaldepartmentid())){
+						d.setThirdpartyhisid(rj.getOuthospitaldepartmentid());
+						d.setName(rj.getOuthospitaldepartment());//科室名称
+					}
 				}
-				d.setName(rj.getOuthospitaldepartment());//科室名称
 				//wangsongyuan 新增科室排期随访 默认值 20170719
 				d.setNeedfollowup("需要");
 				//wangsongyuan 新增科室类别 20180608
@@ -649,7 +662,11 @@ public class JiXianOldHisHandler {
 				departMentOldMapper.setDepartment(d);
 				//往中间表里添加数据
 			}else{
-				dt.setName(rj.getOuthospitaldepartment());//科室名称
+				if(rj.getIsStatus()==1){
+					dt.setName(rj.getInhospitaldepartment());//科室名称
+				}else if(rj.getIsStatus()==2){
+					dt.setName(rj.getOuthospitaldepartment());//科室名称
+				}
 				dt.setStatus(1);//科室类别
 				departMentOldMapper.updateDepartment(dt);
 			}
@@ -848,7 +865,7 @@ public class JiXianOldHisHandler {
 		p.setPatientHisId(rj.getPatientid_his());
 	}
 	
-	private synchronized void setOutHospital(RzzyyJbgl rj,Department department,Patient p){
+	private void setOutHospital(RzzyyJbgl rj,Department department,Patient p){
 		Outofthehospitalinhospitalinformation outh = new Outofthehospitalinhospitalinformation();
 		Map<String,Object> para= new HashMap<>();
 		para.put("inhospitalid", rj.getInhospitalid());
@@ -967,6 +984,7 @@ public class JiXianOldHisHandler {
 				}
 			}
 		}else{
+			outh.setTaskstatus(1);
 			outofthehospitalinhospitalinformationOldMapper.setOut(outh);
 		}
 	}
